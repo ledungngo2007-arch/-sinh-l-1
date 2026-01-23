@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luyện Thi Lý Sinh Y Học 1 (50 Câu)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap');
+        body { background-color: #f8fafc; font-family: 'Be Vietnam Pro', sans-serif; }
+        .slide-in { animation: slideIn 0.3s ease-out forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .correct-pulse { animation: correctPulse 0.5s cubic-bezier(0.4, 0, 0.6, 1); }
+        @keyframes correctPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+        /* Toggle Switch */
+        .toggle-checkbox:checked { right: 0; border-color: #3b82f6; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #3b82f6; }
+        
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+        .shuffle-btn:active { transform: rotate(180deg); transition: transform 0.3s; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        const STORAGE_KEY = 'LYSINH1_QUIZ_STATE_V1';
+
+        // Dữ liệu 50 câu hỏi từ tài liệu Lý Sinh Y Học 1
+        const originalQuestionData = [
+            { 
+                id: 1, 
+                q: "Điện tâm đồ của người này so với người khác:", 
+                a: ["Đồng nhất về hình dạng của cùng một đơn sóng bất kì.", "Luôn giống nhau về thành phần các đơn sóng trong một chu kì điện tim.", "Khác nhau về biên độ của cùng một đơn sóng nào đó.", "Đồng nhất về thời khoảng của cùng một đơn sóng bất kì."], 
+                correct: 2,
+                explain: "Điện tâm đồ phụ thuộc vào đặc điểm sinh lý, bệnh lý và vị trí đặt điện cực của từng người, nên biên độ sóng sẽ khác nhau."
+            },
+            { 
+                id: 2, 
+                q: "Tác dụng quang động lực là sự tổn thương….. (I)… một số chức năng sinh lý và cấu trúc dưới tác dụng của ….. (II)….… với sự có mặt của ….(III)..…", 
+                a: ["I: không phục hồi, II: ánh sáng, III: ôxi + chất màu.", "I: có thể phục hồi, II: bức xạ ion hóa, III: ôxi + chất màu.", "I: có thể phục hồi, II: ánh sáng, III: ôxi + chất màu.", "I: không phục hồi, II: bức xạ ion hoá, III: ôxi + chất màu."], 
+                correct: 0,
+                explain: "Tác dụng quang động lực gây tổn thương không phục hồi dưới tác dụng của ánh sáng khả kiến với sự có mặt của oxy và chất cảm quang (chất màu)."
+            },
+            { 
+                id: 3, 
+                q: "Kích thích càng mạnh thì:", 
+                a: ["Xung điện động kéo dài càng lâu.", "Biên độ xung điện thế hoạt động càng lớn", "Vùng bị kích hoạt trên màng tế bào càng rộng", "Thời gian kéo dài và biên độ xung điện động vẫn không thay đổi"], 
+                correct: 3,
+                explain: "Theo quy luật 'tất cả hoặc không', nếu kích thích đạt ngưỡng, biên độ và thời gian xung điện động không thay đổi dù cường độ kích thích tăng lên."
+            },
+            { 
+                id: 4, 
+                q: "Mắt cận thị là mắt:", 
+                a: ["Chỉ có khả năng nhìn gần;", "có điểm cực viễn ở cách mắt một khoảng hữu hạn;", "Ở trạng thái thư giãn, có tiêu điểm ở trước võng mạc;", "Cả A, B, C đều đúng."], 
+                correct: 3,
+                explain: "Mắt cận thị có trục nhãn cầu dài hơn bình thường hoặc lực khúc xạ quá lớn, ảnh hiện trước võng mạc, điểm cực viễn hữu hạn."
+            },
+            { 
+                id: 5, 
+                q: "Về nguyên nhân tồn tại tính phóng xạ của các hạt nhân trong tự nhiên:", 
+                a: ["Các proton mang điện tích cùng dấu đẩy nhau nên hạt nhân không bền vững", "Lực liên kết giữa các nucleon không đủ mạnh để giữ hạt nhân bền vững", "Xu hướng hạt nhân nặng giải phóng dự trữ năng lượng lớn của nó", "Cả A, B, C đều đúng."], 
+                correct: 3,
+                explain: "Tính phóng xạ do sự mất cân bằng giữa lực hạt nhân và lực đẩy Coulomb, xu hướng giải phóng năng lượng để về trạng thái bền vững hơn."
+            },
+            { 
+                id: 6, 
+                q: "Điểm cực viễn của mắt không có tật là:", 
+                a: ["Điểm mà nhìn vào đó mắt phải điều tiết tối đa .", "Điểm xa nhất trên trục nhìn mà đặt vật ở đó, mắt còn nhìn thấy rõ, không cần điều tiết", "Điểm ở xa vô cùng trên trục nhìn ;", "Điểm xa nhất mà mắt còn nhìn rõ;"], 
+                correct: 1,
+                explain: "Mắt chính thị (không tật) khi thư giãn hoàn toàn (không điều tiết) sẽ nhìn rõ vật ở vô cực."
+            },
+            { 
+                id: 7, 
+                q: "Phương trình cân bằng vận chuyển điện tích qua màng tế bào được xây dựng trong điều kiện:", 
+                a: ["Có tính đến sự tham gia của các iôn hoá trị 2 như Ca++, Mg++….", "Không tính đến sự vận chuyển thụ động.", "Tổng điện tích được vận chuyển qua màng trong một đơn vị thời gian theo 2 hướng ngược nhau là bằng nhau.", "Chỉ tính đến sự vận chuyển hai loại ion K+, Cl- qua màng mà không tính đến sự vận chuyển của ion Na+."], 
+                correct: 2,
+                explain: "Trạng thái cân bằng động điện tích nghĩa là tổng dòng điện tích dương đi vào bằng tổng dòng đi ra (hoặc tổng đại số dòng = 0)."
+            },
+            { 
+                id: 8, 
+                q: "Quá trình nhìn có thể biểu diễn thông qua sơ đồ tổng hợp và phân hủy sắc tố thị giác: Rodopxin <-> opxin + Retinal. Khi độ rọi sáng tăng:", 
+                a: ["hàm lượng Rodopxin được điều chỉnh thông qua phản ứng hóa sinh trung gian.", "cân bằng sẽ dịch chuyển sang phải", "cân bằng sẽ dịch chuyển sang trái.", "hàm lượng Rodopxin được điều chỉnh bằng cách bổ xung Retinal lấy từ vitamin A dự trữ."], 
+                correct: 1,
+                explain: "Khi có ánh sáng (độ rọi tăng), Rodopxin bị phân hủy thành Opxin và Retinal (phản ứng quang hóa), cân bằng dịch sang phải."
+            },
+            { 
+                id: 9, 
+                q: "Chọn nhận xét đúng về thị giác Scoto:", 
+                a: ["Các tế bào que và tế bào nón cùng tham gia vào quá trình này", "Trong quá trình nhìn này Rodopxin phân hủy thành Opxin và Retinal", "Chỉ có các tế bào nón tham gia vào quá trình này", "Ánh sáng tác dụng lên mắt trong thị giác Scoto có độ rọi lớn."], 
+                correct: 1,
+                explain: "Thị giác Scoto (nhìn đêm) chủ yếu do tế bào que đảm nhận, sắc tố Rodopxin phân hủy khi có ánh sáng yếu kích thích."
+            },
+            { 
+                id: 10, 
+                q: "Đặc điểm khác nhau giữa điện thế nghỉ và điện thế hoạt động: I. Tính định xứ; II. Thời gian tồn tại; III. Dấu của điện thế. Ta chọn:", 
+                a: ["I và III", "II và III", "I, II và III", "I và II"], 
+                correct: 2,
+                explain: "Điện thế nghỉ: ổn định, định xứ, trong âm ngoài dương. Điện thế hoạt động: biến đổi nhanh (xung), lan truyền, đảo cực (trong dương ngoài âm)."
+            },
+            { 
+                id: 11, 
+                q: "Tác dụng của dòng điện lên cơ thể:", 
+                a: ["Dòng một chiều làm thay đổi tính thấm màng tế bào do đó có thể làm tăng trao đổi chất.", "Gây tử vong chủ yếu do toả nhiệt.", "Dòng một chiều gây kích thích cơ và thần kinh là chủ yếu.", "Xung điện gây các phản ứng hoá học trong cơ thể và dưới các điện cực."], 
+                correct: 0,
+                explain: "Dòng một chiều đều (Galvanic) gây phân cực màng, thay đổi tính thấm, tăng trao đổi chất (liệu pháp Galvanic)."
+            },
+            { 
+                id: 12, 
+                q: "Về kính sửa tật cận thị:", 
+                a: ["Mắt cận thị đeo kính phân kỳ để nhìn rõ vật ở gần như mắt không tật.", "Mắt cận thị đeo kính hội tụ để nhìn rõ vật ở xa vô cực như mắt không tật.", "Mắt cận thị đeo kính hội tụ để nhìn rõ vật ở gần như mắt không tật.", "Mắt cận thị đeo kính phân kỳ để nhìn rõ vật ở xa vô cực như mắt không tật."], 
+                correct: 3,
+                explain: "Kính phân kỳ (độ tụ âm) giúp đưa ảnh của vật ở vô cực về điểm cực viễn của mắt cận."
+            },
+            { 
+                id: 13, 
+                q: "Đặc điểm của phương pháp đánh dấu phóng xạ:", 
+                a: ["Khối lượng chất đánh dấu phóng xạ thường rất nhỏ.", "Chỉ có thể đưa chất phóng xạ vào cơ thể bằng hình thức tiêm hoặc uống.", "Có thể dùng chất phóng xạ có sẵn trong cơ thể.", "Chỉ đánh dấu PX được các chất vô cơ mà không đánh dấu với các chất hữu cơ vì khối lượng của chúng quá lớn."], 
+                correct: 0,
+                explain: "Phương pháp này dùng lượng rất nhỏ chất phóng xạ (vết) để không làm rối loạn sinh lý cơ thể nhưng vẫn đủ để ghi đo."
+            },
+            { 
+                id: 14, 
+                q: "Xác định phát biểu sai về cơ sở phân tử của sự thụ cảm ánh sáng:", 
+                a: ["Ở tế bào que có Iodopxin, ở tế bào nón có Rodopxin là các sắc tố thụ cảm ánh sáng.", "Ở võng mạc người ta thấy có các tế bào thụ cảm ánh sáng là tế bào nón và tế bào que.", "Sự tái tạo Rodopxin (hoặc Iodopxin) trong bóng tối được thực hiện dưới tác dụng của năng lượng hoá sinh.", "Phản ứng quang hoá phân huỷ Iodop xin (hoặc Rodopxin) làm phát sinh các xung động thần kinh truyền vào dây thần kinh thị giác."], 
+                correct: 0,
+                explain: "Sai vì: Tế bào que chứa Rodopxin (nhìn đêm), tế bào nón chứa Iodopxin (nhìn ngày/màu)."
+            },
+            { 
+                id: 15, 
+                q: "Trong hiệu ứng quang động lực, tác dụng của ánh sáng lên cơ thể sống là:", 
+                a: ["Tác dụng trực tiếp", "Tác dụng tổng hợp", "Tác dụng gián tiếp", "Tác dụng phân tích"], 
+                correct: 2,
+                explain: "Ánh sáng tác dụng gián tiếp thông qua chất cảm quang (chất màu) và oxy để gây tổn thương tế bào."
+            },
+            { 
+                id: 16, 
+                q: "Khả năng hội tụ chùm tia laser vào một điểm rất nhỏ đạt được là nhờ:", 
+                a: ["Tính đơn sắc của chùm tia laser.", "Tính kết hợp của chùm tia laser.", "Tia laser có thể tồn tại ở dạng xung.", "Tia laser có cường độ lớn."], 
+                correct: 1,
+                explain: "Tính kết hợp cao (cùng pha, cùng tần số) cho phép chùm tia hầu như không phân kỳ và hội tụ cực tốt."
+            },
+            { 
+                id: 17, 
+                q: "Khả năng phân ly của kính hiển vi bị giới hạn bởi hiện tượng:", 
+                a: ["Giao thoa ánh sáng.", "Nhiễu xạ ánh sáng.", "Hấp thụ ánh sáng.", "Phản xạ ánh sáng."], 
+                correct: 1,
+                explain: "Nhiễu xạ ánh sáng qua vật kính làm ảnh của một điểm trở thành một vết, giới hạn khả năng phân biệt 2 điểm gần nhau."
+            },
+            { 
+                id: 18, 
+                q: "Mức độ gây nguy hiểm của dòng điện khi đi qua cơ thể chủ yếu được quyết định bởi:", 
+                a: ["Đường dẫn truyền qua cơ thể", "Tần số của dòng điện", "Hiệu điện thế đặt vào cơ thể", "Cường độ dòng điện đi qua cơ thể"], 
+                correct: 3,
+                explain: "Cường độ dòng điện là yếu tố trực tiếp gây kích thích thần kinh cơ, rung tim và tỏa nhiệt (I càng lớn càng nguy hiểm)."
+            },
+            { 
+                id: 19, 
+                q: "Chọn cụm từ thích hợp: Từ các cơ chế của tác dụng quang động lực người ta thấy chất màu đóng vai trò xúc tác quang hoá ở trạng thái .............(I)................ và nó ...............(II)............. ở cuối phản ứng.", 
+                a: ["I : triplet ; II : bị phân huỷ", "I : singlet ; II : được tái tạo", "I : singlet ; II : bị phân huỷ", "I : triplet ; II : được tái tạo"], 
+                correct: 3,
+                explain: "Chất màu hấp thụ photon chuyển sang trạng thái kích thích Triplet (bền hơn Singlet) để truyền năng lượng và được tái tạo sau phản ứng."
+            },
+            { 
+                id: 20, 
+                q: "Cận thị là tật của mắt mà khi mắt không điều tiết thì:", 
+                a: ["Không nhìn rõ những vật ở gần.", "Tiêu điểm của mắt nằm trước võng mạc.", "Tiêu điểm của mắt nằm sau võng mạc.", "Ảnh của các vật ở vô cùng hiện lên ở điểm cực viễn của mắt."], 
+                correct: 1,
+                explain: "Khi không điều tiết (nhìn xa), tiêu điểm của mắt cận nằm trước võng mạc (do độ tụ lớn hoặc trục mắt dài)."
+            },
+            { 
+                id: 21, 
+                q: "Có 4 chùm hạt α, β+, β-, γ cùng mật độ (thí dụ 10 hạt / cm2.s) cùng xuyên vào tấm chì dày 5 cm, sau tấm chì ta thấy còn có các loại hạt:", 
+                a: ["Tia γ", "β+, β- và tia γ", "Không có hạt nào", "γ và β-"], 
+                correct: 2,
+                explain: "Chì 5cm chắn được tia gamma (giảm cường độ rất nhiều), và chắn hoàn toàn alpha, beta. Tuy nhiên thực tế tia Gamma có khả năng đâm xuyên mạnh nhất, nhưng với chì dày 5cm thì hầu như cũng bị hấp thụ hoặc tán xạ gần hết hoặc còn lại rất ít gamma. Trong các đáp án, C là hợp lý nhất nếu xét khả năng chắn xạ của chì dày."
+            },
+            { 
+                id: 22, 
+                q: "Ảnh cắt lớp sử dụng tín hiệu là ….(I)……..cho chúng ta thông tin về cấu trúc của phần tử thể tích, tức là …. (II) ….", 
+                a: ["(I) : thời gian hồi phục T1, T2, (II) : chứa nhiều loại chất gì : máu , chất dịch, não hay tuỷ….", "(I) : tín hiệu cảm ứng suy giảm tự do FID, (II) : chứa nhiều loại chất gì : chất dịch, não hay tuỷ….", "(I) : tín hiệu cảm ứng suy giảm tự do FID, (II) : chứa nước, mỡ hay máu…", "(I) : thời gian hồi phục T1, T2, (II) : chứa nhiều hay ít proton (mật độ proton)"], 
+                correct: 3,
+                explain: "MRI sử dụng thời gian hồi phục T1, T2 và mật độ proton để tái tạo hình ảnh cấu trúc mô."
+            },
+            { 
+                id: 23, 
+                q: "Xác định phát biểu sai về hiệu ứng sinh học của tia phóng xạ đối với cơ thể sống:", 
+                a: ["Tế bào có thể mất khả năng phân chia.", "Nhân tế bào bị tổn thương ít hơn so với màng.", "Các phân tử protein bị đứt gãy làm giảm khả năng hoạt động chức năng một số mô.", "Cấu trúc của ADN có thể bị thay đổi tạo ADN dị thường."], 
+                correct: 1,
+                explain: "Sai vì: Nhân tế bào (chứa ADN) nhạy cảm với phóng xạ hơn màng tế bào rất nhiều và là đích tác dụng chính gây tổn thương di truyền/chết tế bào."
+            },
+            { 
+                id: 24, 
+                q: "Vật kính và thị kính trong kính hiển vi có vai trò:", 
+                a: ["Vật kính tạo ra ảnh ảo rất lớn của vật cần quan sát và thị kính dùng như một kính lúp để quan sát ảnh ảo nói trên;", "Thị kính tạo ra ảnh thật rất lớn của vật cần quan sát, vật kính dùng như một kính lúp để quan sát ảnh nói trên;", "Thị kính tạo ra ảnh ảo rất lớn của vật cần quan sát, vật kính dùng như một kính lúp để quan sát ảnh nói trên;", "Vật kính tạo ra một ảnh thật rất lớn của vật cần quan sát và thị kính dùng như một kính lúp để quan sát ảnh nói trên."], 
+                correct: 3,
+                explain: "Vật kính tạo ảnh thật lớn (nằm trong tiêu cự thị kính), thị kính đóng vai trò kính lúp quan sát ảnh thật đó (tạo ảnh ảo lớn hơn)."
+            },
+            { 
+                id: 25, 
+                q: "Cơ sở của phương pháp phân tích cấu trúc vĩ mô bằng tia X (phương pháp chẩn đoán bằng hình ảnh do tia X tạo ra):", 
+                a: ["Tia X là sóng điện từ có bước sóng nhỏ hơn 10-2 m.", "Tia X mang năng lượng ε = hf", "Tia X phản xạ, khúc xạ giống như ánh sáng.", "Định luật hấp thụ tia X: I = I0. e^-μx"], 
+                correct: 3,
+                explain: "Hình ảnh X-quang dựa trên sự hấp thụ tia X khác nhau của các mô (xương hấp thụ nhiều, mô mềm ít), tuân theo định luật hấp thụ."
+            },
+            { 
+                id: 26, 
+                q: "Cơ sở của cơ chế tác dụng trực tiếp của các bức xạ iôn hoá lên cơ thể sống:", 
+                a: ["ảnh hưởng của hàm lượng nước và nhiệt độ đối với các hiệu ứng sinh học do chiếu xạ", "ảnh hưởng của nồng độ oxy đối đối với các hiệu ứng sinh học do chiếu xạ", "Bức xạ ion hóa có khả năng kích thích hoặc ion hóa mọi loại phân tử, bao gồm cả các đại phân tử hữu cơ", "Sự xuất hiện của các gốc tự do và phân tử H2O2 trong đối tượng bị chiếu xạ"], 
+                correct: 2,
+                explain: "Tác dụng trực tiếp là tia phóng xạ va chạm trực tiếp gây ion hóa/kích thích các phân tử sinh học quan trọng (ADN, Protein)."
+            },
+            { 
+                id: 27, 
+                q: "Chọn cụm từ thích hợp: Khả năng đâm xuyên của các bức xạ hãm trong chùm tia X phụ thuộc vào ...................", 
+                a: ["Bản chất kim loại làm anốt.", "Cường độ dòng đốt nóng katốt.", "Hiệu điện thế anốt-katốt.", "Bản chất kim loại làm katốt."], 
+                correct: 2,
+                explain: "Hiệu điện thế Uak càng lớn, năng lượng electron đập vào đối càng lớn -> photon tia X có năng lượng càng cao -> đâm xuyên càng mạnh (tia cứng)."
+            },
+            { 
+                id: 28, 
+                q: "Lân quang là sự bức xạ lượng tử ánh sáng do các phân tử, nguyên tử phát ra khi chúng:", 
+                a: ["Chuyển từ trạng thái kích thích singlet về trạng thái cơ bản.", "Chuyển từ trạng thái kích thích triplet về trạng thái cơ bản.", "Chuyển từ trạng thái kích thích mạnh về trạng thái kích thích yếu hơn.", "Chuyển từ trạng thái kích thích triplet này sang trạng thái kích thích triplet khác."], 
+                correct: 1,
+                explain: "Lân quang liên quan đến trạng thái Triplet (bền, sống lâu), khi chuyển về cơ bản sẽ phát quang kéo dài (lân quang)."
+            },
+            { 
+                id: 29, 
+                q: "Ánh sáng bị tán sắc bởi lăng kính thuỷ tinh vì:", 
+                a: ["Mỗi màu có bước sóng riêng", "Lăng kính trong suốt", "Ánh sáng trắng có bảy màu", "Chiết suất thuỷ tinh đối với ánh sáng đơn sắc có khác nhau thì khác nhau."], 
+                correct: 3,
+                explain: "Chiết suất n phụ thuộc vào bước sóng ánh sáng (n đỏ < n tím), do đó góc lệch khi qua lăng kính khác nhau gây tán sắc."
+            },
+            { 
+                id: 30, 
+                q: "Nhận xét về quĩ đạo của các hạt vi mô tích điện khi xuyên vào vật chất:", 
+                a: ["Quĩ đạo hạt proton là đường ngoằn ngoèo, gấp khúc", "Quĩ đạo hạt β- là đường thẳng", "Quĩ đạo hạt β- là đường ngoằn nghoèo, gấp khúc", "Quĩ đạo hạt α là đường ngoằn nghèo, gấp khúc"], 
+                correct: 2,
+                explain: "Hạt beta (electron) có khối lượng nhỏ, dễ bị lệch hướng khi va chạm, nên quỹ đạo gấp khúc. Hạt alpha nặng nên đi thẳng."
+            },
+            { 
+                id: 31, 
+                q: "Dùng ............ để rút lại lượng nước thừa từ buồng trước của mắt để chống lại sự tăng nhãn áp.", 
+                a: ["dung dịch đẳng trương", "dung dịch ưu trương", "dung dịch nhược trương", "dung dịch muối"], 
+                correct: 1,
+                explain: "Dung dịch ưu trương có áp suất thẩm thấu cao hơn, sẽ hút nước từ nơi có áp suất thấp hơn (buồng mắt) ra ngoài."
+            },
+            { 
+                id: 32, 
+                q: "Các cơ chế vận chuyển vật chất qua màng tế bào:", 
+                a: ["Vận chuyển thụ động với sự giúp đỡ của các protein vận chuyển và năng lượng ATP", "Vận chuyển tích cực với sự giúp đỡ của các chất mang và năng lượng dự trữ trong các loại gradient ở vùng màng.", "Khuếch tán đơn giản qua lớp lipid kép đối với các phân tử khí, phân tử thích nước và có kích thước nhỏ", "Khuếch tán qua các kênh protein và kênh ion dành cho các phân tử thích nước và các ion"], 
+                correct: 3,
+                explain: "Kênh protein/ion cho phép các chất phân cực, ion (thích nước) đi qua màng theo gradient nồng độ (thụ động)."
+            },
+            { 
+                id: 33, 
+                q: "Áp suất phụ tác dụng lên mặt thoáng cong của chất lỏng:", 
+                a: ["Có độ lớn tỷ lệ nghịch với khối lượng riêng của chất lỏng và độ cong của mặt thoáng.", "Có chiều độc lập với sự định hướng của mặt cong.", "Có độ lớn phụ thuộc vào bản chất của chất lỏng và độ cong của mặt thoáng.", "Có phương luôn tiếp xúc với mặt thoáng."], 
+                correct: 2,
+                explain: "Áp suất phụ (Laplace) P = 2σ/R, phụ thuộc hệ số căng mặt ngoài (bản chất chất lỏng) và bán kính cong R (độ cong)."
+            },
+            { 
+                id: 34, 
+                q: "Tại phổi oxi O2 được khuếch tán từ phế nang vào các mao tĩnh mạch, còn khí cacbonic CO2 được khuếch tán từ mao tĩnh mạch vào phế nang là do:", 
+                a: ["phân áp O2 ở phế nang cao hơn ở tĩnh mạch", "phân áp O2 ở mao tĩnh mạch cao hơn ở phế nang", "phân áp CO2 ở phế nang cao hơn ở mao tĩnh mạch", "phân áp CO2 ở phế nang thấp hơn môi trường"], 
+                correct: 0,
+                explain: "Khuếch tán khí tuân theo gradient phân áp: đi từ nơi phân áp cao đến nơi thấp (O2: Phế nang > Máu; CO2: Máu > Phế nang)."
+            },
+            { 
+                id: 35, 
+                q: "Giữa hai đầu một đoạn mạch trong hệ tuần hoàn yếu tố nào sau đây không thay đổi:", 
+                a: ["Áp suất", "Vận tốc", "Năng lượng", "Lưu lượng"], 
+                correct: 3,
+                explain: "Theo định luật bảo toàn dòng chảy (phương trình liên tục), lưu lượng máu (Q = S.v) trong hệ mạch kín là hằng số."
+            },
+            { 
+                id: 36, 
+                q: "Dung dịch:", 
+                a: ["Dung dịch ưu trương có áp suất thẩm thấu nhỏ hơn áp suất thẩm thấu của dung dịch chuẩn.", "Dung dịch nhược trương có áp suất thẩm thấu lớn hơn áp suất thẩm thấu của dung dịch chuẩn.", "Tế bào để trong dung dịch nhược trương sẽ bị mất nước và teo lại.", "Dung dịch đẳng trương có áp suất thẩm thấu bằng áp suất thẩm thấu của dung dịch chuẩn."], 
+                correct: 3,
+                explain: "Đẳng trương: Ptt bằng nhau. Ưu trương: Ptt cao hơn. Nhược trương: Ptt thấp hơn."
+            },
+            { 
+                id: 37, 
+                q: "Khi cơ thể chuyển từ trạng thái nghỉ ngơi sang trạng thái hoạt động tích cực, biện pháp quan trọng và hiệu quả nhất mà hệ tuần hoàn đã thực hiện để cung cấp đủ oxi và các chất dinh dưỡng là:", 
+                a: ["Giảm bớt hoạt động của một số tổ chức không cần thiết nhằm ổn định lưu lượng máu lưu thông trong hệ mạch", "Giãn mạch để tăng lưu lượng máu lưu thông theo công thức Poadơ", "Tăng nhịp đập của tim.", "Tăng áp suất máu để đẩy được một lượng máu lớn vào hệ mạch theo công thức Poadơ."], 
+                correct: 1,
+                explain: "Theo công thức Poiseuille, lưu lượng Q tỷ lệ với lũy thừa bậc 4 của bán kính mạch (R^4). Giãn mạch (tăng R) tăng Q cực nhanh và hiệu quả nhất."
+            },
+            { 
+                id: 38, 
+                q: "Về siêu âm:", 
+                a: ["Một thanh sắt từ khi bị từ hóa thì chiều dài của nó tăng lên một chút, đó là hiện tượng từ giảo.", "Các chất dùng làm nguồn phát và thu siêu âm có khả năng biến dạng lớn dưới tác dụng của ngoại lực và có khả năng đàn hồi lớn.", "Nguyên tắc thu siêu âm dựa vào hiệu ứng áp điện nghịch.", "Nguyên tắc phát siêu âm dựa vào hiệu ứng áp điện thuận và hiện tượng từ giảo."], 
+                correct: 0,
+                explain: "Hiện tượng từ giảo: vật liệu sắt từ thay đổi kích thước khi đặt trong từ trường biến thiên, dùng để phát siêu âm."
+            },
+            { 
+                id: 39, 
+                q: "Nếu con người từ tư thế nằm chuyển sang tư thế đứng:", 
+                a: ["ở kỳ tâm trương lượng máu từ các tĩnh mạch dưới đổ về tim bị giảm bớt.", "do tác dụng của trọng lực áp suất máu ở chi dưới thay đổi đáng kể.", "áp suất máu do tim co bóp tăng lên.", "khối lượng máu được tim đẩy ra sau một lần co bóp không đổi."], 
+                correct: 1,
+                explain: "Khi đứng, áp suất thủy tĩnh tăng thêm ở chi dưới (P = P_tim + ro*g*h), làm áp suất máu ở chân tăng cao so với khi nằm."
+            },
+            { 
+                id: 40, 
+                q: "Tính chất của chùm siêu âm:", 
+                a: ["Với 2 chùm siêu âm có cường độ như nhau, chùm siêu âm có tần số càng lớn thì khả năng xuyên sâu vào cơ thể càng lớn", "Trong quá trình lan truyền của sóng siêu âm khi gặp các vật cản có thể xảy ra hiện tượng nhiễu xạ", "Với kích thước và hình dạng thích hợp của đầu phát có thể thu được chùm siêu âm có độ phân kỳ nhỏ", "Sóng siêu âm khi lan truyền cũng có các tính chất tương tự như sóng âm"], 
+                correct: 2,
+                explain: "Sóng siêu âm có bước sóng ngắn nên ít bị nhiễu xạ, dễ tạo chùm tia định hướng (ít phân kỳ) để chẩn đoán."
+            },
+            { 
+                id: 41, 
+                q: "Hai âm phức tạp khác nhau mà có cùng tần số, độ to thì khác nhau bởi:", 
+                a: ["Biên độ áp suất gây ra tại màng nhĩ.", "Thành phần dao động điều hoà hình sin đã tạo nên mỗi âm.", "Độ cao của âm", "Cả A, B, C."], 
+                correct: 1,
+                explain: "Đây là đặc trưng Âm sắc (timbre), phụ thuộc vào đồ thị dao động âm (tập hợp các họa âm/thành phần điều hòa)."
+            },
+            { 
+                id: 42, 
+                q: "Sóng âm:", 
+                a: ["Là sóng ngang lan truyền được trong môi trường đàn hồi, có tần số từ 16Hz đến 20.000Hz.", "Là sóng dọc lan truyền được trong mọi môi trường.", "Là sóng dọc lan truyền trong môi trường đàn hồi, có tần số từ 16Hz đến 20.000Hz.", "Là sóng ngang lan truyền được trong mọi môi trường, kể cả chân không."], 
+                correct: 2,
+                explain: "Sóng âm trong chất lỏng/khí là sóng dọc, miền nghe thấy của người là 16-20.000Hz."
+            },
+            { 
+                id: 43, 
+                q: "Trong 4 đặc trưng của sóng dưới đây, đặc trưng nào không liên quan đến các đặc trưng còn lại:", 
+                a: ["Vận tốc truyền sóng.", "Bước sóng.", "Biên độ", "Tần số sóng."], 
+                correct: 2,
+                explain: "Bước sóng = Vận tốc / Tần số. Ba đại lượng này liên hệ với nhau. Biên độ (năng lượng) độc lập với chu kỳ/tần số."
+            },
+            { 
+                id: 44, 
+                q: "Sự trao đổi chất xảy ra ở thành mao mạch có động lực là:", 
+                a: ["gradien áp suất thủy tĩnh, thủy động ở thành mao mạch", "các loại gradien nồng độ ở thành mao mạch", "các loại gradien áp suất ở thành mao mạch", "gradien áp suất thẩm thấu ở thành mao mạch"], 
+                correct: 2,
+                explain: "Động lực chính là sự chênh lệch (gradient) các loại áp suất: Áp suất thủy tĩnh (lọc) và Áp suất keo/thẩm thấu (tái hấp thu) - Cơ chế Starling."
+            },
+            { 
+                id: 45, 
+                q: "Hiện tượng nào có liên quan đến bệnh màng phổi ở trẻ sơ sinh đẻ non:", 
+                a: ["Hiện tượng thẩm thấu", "Hiện tượng tràn khí màng phổi", "Hiện tượng mao dẫn", "Hiện tượng căng mặt ngoài"], 
+                correct: 3,
+                explain: "Thiếu chất hoạt diện (Surfactant) làm tăng sức căng mặt ngoài phế nang, gây xẹp phổi (Hội chứng suy hô hấp sơ sinh)."
+            },
+            { 
+                id: 46, 
+                q: "Trong hiệu ứng Doppler, f là tần số sóng từ nguồn phát ra, f’ là tần số sóng máy thu sẽ thu được, ta có: I. Nguồn và máy thu đi xa nhau f’ > f; II. Nguồn và máy thu đi lại gần nhau f’ < f. Ta thấy:", 
+                a: ["I sai II đúng", "I và II đều sai", "I và II đều đúng", "I đúng II sai"], 
+                correct: 1,
+                explain: "Cả 2 đều sai. Đúng là: Lại gần nhau f' > f (tần số tăng); Đi xa nhau f' < f (tần số giảm)."
+            },
+            { 
+                id: 47, 
+                q: "Áp suất máu giảm dần từ cửa thất trái đến cửa nhĩ phải thì khoảng làm giảm áp suất nhiều nhất là:", 
+                a: ["Tiểu động mạch và tiểu tĩnh mạch.", "Tĩnh mạch chủ.", "Mao động mạch và mao tĩnh mạch.", "Động mạch chủ."], 
+                correct: 2,
+                explain: "Hệ thống mao mạch có tổng tiết diện lớn nhất và sức cản lớn, làm áp suất máu giảm mạnh nhất khi đi qua đây."
+            },
+            { 
+                id: 48, 
+                q: "Sự hình thành cảm giác âm ở cơ quan thính giác người.", 
+                a: ["Độ to của âm có được căn cứ vào tốc độ lan truyền của xung kích thích về thần kinh trung ương.", "Âm có tần số lớn tạo ra chuyển động xoáy kích thích vị trí gần với đỉnh ốc tai của màng đáy.", "Cảm giác độ cao hình thành phụ thuộc vào vị trí sóng âm kích thích màng đáy ở tai trong", "Âm sắc hình thành trên cơ sở số lượng xung thần kinh được truyền tới thần kinh trung ương."], 
+                correct: 2,
+                explain: "Thuyết vị trí (Place theory): Tần số cao kích thích đáy ốc tai, tần số thấp kích thích đỉnh ốc tai -> Phân biệt độ cao."
+            },
+            { 
+                id: 49, 
+                q: "Người ta thấy các đặc trưng của cảm giác âm phụ thuộc vào các đặc trưng vật lý:", 
+                a: ["Độ to không phụ thuộc vào tần số âm.", "Âm sắc phụ thuộc vào tần số âm.", "Độ to của âm phụ thuộc vào cường độ âm.", "Độ cao của âm phụ thuộc vào thành phần cấu tạo âm."], 
+                correct: 2,
+                explain: "Độ to là đặc trưng sinh lý tương ứng với Cường độ âm (và tần số) - đặc trưng vật lý."
+            },
+            { 
+                id: 50, 
+                q: "Để bù sự mất máu do bị thương hay mất nước do tiêu chảy, người ta đưa vào cơ thể một lượng dung dịch:", 
+                a: ["Đẳng trương so với máu.", "Nồng độ tùy tình trạng người bệnh.", "Nhược trương so với máu.", "Ưu trương so với máu."], 
+                correct: 0,
+                explain: "Dung dịch đẳng trương (như NaCl 0.9%) giúp bù thể tích tuần hoàn mà không gây vỡ hay teo hồng cầu."
+            }
+        ];
+
+        // Hàm trộn mảng
+        const shuffleArray = (array) => {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        };
+
+        const App = () => {
+            // Khởi tạo state từ Local Storage nếu có
+            const [questions, setQuestions] = useState(() => {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        if (parsed.questions) return parsed.questions;
+                    } catch (e) {
+                        console.error("Lỗi đọc cache câu hỏi", e);
+                    }
+                }
+                return originalQuestionData;
+            });
+
+            const [currentIdx, setCurrentIdx] = useState(() => {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                return saved ? JSON.parse(saved).currentIdx || 0 : 0;
+            });
+
+            const [userAnswers, setUserAnswers] = useState(() => {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                return saved ? JSON.parse(saved).userAnswers || {} : {};
+            });
+
+            const [isAutoNext, setIsAutoNext] = useState(() => {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                return saved ? JSON.parse(saved).isAutoNext ?? true : true;
+            });
+
+            const [isShuffleAnswers, setIsShuffleAnswers] = useState(() => {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                return saved ? JSON.parse(saved).isShuffleAnswers ?? false : false;
+            });
+
+            const timerRef = useRef(null);
+
+            // Lưu vào Local Storage mỗi khi state thay đổi
+            useEffect(() => {
+                const stateToSave = {
+                    questions,
+                    currentIdx,
+                    userAnswers,
+                    isAutoNext,
+                    isShuffleAnswers
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+            }, [questions, currentIdx, userAnswers, isAutoNext, isShuffleAnswers]);
+
+            useEffect(() => {
+                return () => {
+                    if (timerRef.current) clearTimeout(timerRef.current);
+                };
+            }, []);
+
+            const resetAndShuffle = () => {
+                if (timerRef.current) clearTimeout(timerRef.current);
+                
+                let newQuestionList = shuffleArray(originalQuestionData);
+
+                if (isShuffleAnswers) {
+                    newQuestionList = newQuestionList.map(q => {
+                        const answersWithStatus = q.a.map((ans, idx) => ({
+                            text: ans,
+                            isCorrect: idx === q.correct
+                        }));
+                        const shuffledAnswers = shuffleArray(answersWithStatus);
+                        return {
+                            ...q,
+                            a: shuffledAnswers.map(item => item.text),
+                            correct: shuffledAnswers.findIndex(item => item.isCorrect),
+                            explain: q.explain // Giữ nguyên giải thích
+                        };
+                    });
+                }
+
+                setQuestions(newQuestionList);
+                setCurrentIdx(0);
+                setUserAnswers({});
+                window.scrollTo(0, 0);
+            };
+
+            const handleAnswer = (idx) => {
+                if (userAnswers[currentIdx] !== undefined) return;
+
+                setUserAnswers(prev => ({ ...prev, [currentIdx]: idx }));
+
+                if (isAutoNext && currentIdx < questions.length - 1) {
+                    timerRef.current = setTimeout(() => {
+                        setCurrentIdx(prev => prev + 1);
+                    }, 1500); // Tăng thời gian delay một chút để kịp đọc giải thích nếu sai
+                }
+            };
+
+            const stats = useMemo(() => {
+                let correct = 0, completed = 0;
+                Object.keys(userAnswers).forEach(key => {
+                    const qId = parseInt(key);
+                    if (questions[qId] && userAnswers[qId] === questions[qId].correct) correct++;
+                    completed++;
+                });
+                return { correct, completed, total: questions.length };
+            }, [userAnswers, questions]);
+
+            const currentQ = questions[currentIdx];
+            const isAnswered = userAnswers[currentIdx] !== undefined;
+            const isCorrect = isAnswered && userAnswers[currentIdx] === currentQ.correct;
+
+            if (stats.completed === stats.total && stats.total > 0) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
+                        <div className="max-w-2xl w-full bg-white rounded-3xl p-8 shadow-2xl text-center border-t-8 border-blue-600">
+                            <h2 className="text-4xl font-extrabold text-slate-800 mb-6">KẾT QUẢ BÀI THI</h2>
+                            <div className="flex justify-center gap-8 my-8">
+                                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                                    <div className="text-slate-500 text-sm uppercase tracking-widest mb-1">Đúng</div>
+                                    <div className="text-4xl font-black text-green-600">{stats.correct}/{stats.total}</div>
+                                </div>
+                                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                                    <div className="text-slate-500 text-sm uppercase tracking-widest mb-1">Tỷ lệ</div>
+                                    <div className="text-4xl font-black text-blue-600">{Math.round((stats.correct/stats.total)*100)}%</div>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={resetAndShuffle} 
+                                className="w-full py-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-all shadow-lg hover:shadow-blue-200 text-lg flex items-center justify-center gap-2"
+                            >
+                                <i className="fas fa-redo"></i> LÀM BÀI MỚI (RESET)
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen flex flex-col md:flex-row bg-slate-50">
+                    <aside className="w-full md:w-80 bg-white border-r border-slate-200 flex flex-col h-[30vh] md:h-screen sticky top-0 z-10 shadow-lg md:shadow-none">
+                        <div className="p-5 border-b border-slate-100">
+                            <div className="flex justify-between items-center mb-4">
+                                <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    <i className="fas fa-atom text-blue-600"></i> Lý Sinh Y Học 1
+                                </h1>
+                                <button 
+                                    onClick={() => {
+                                        if (confirm("Bạn có chắc muốn xóa toàn bộ tiến độ và làm lại từ đầu không?")) {
+                                            resetAndShuffle();
+                                        }
+                                    }}
+                                    title="Trộn đề và làm lại từ đầu"
+                                    className="w-8 h-8 rounded-full bg-slate-100 hover:bg-blue-100 text-slate-500 hover:text-blue-600 flex items-center justify-center transition-all shuffle-btn"
+                                >
+                                    <i className="fas fa-redo"></i>
+                                </button>
+                            </div>
+                            <div className="bg-slate-100 rounded-xl p-3 flex justify-between items-center text-sm font-semibold text-slate-600">
+                                <span><i className="fas fa-check-circle text-green-500 mr-1"></i> {stats.correct}/{stats.completed}</span>
+                                <span className="text-slate-400">|</span>
+                                <span>{Math.round((stats.completed / stats.total) * 100)}%</span>
+                            </div>
+                            <div className="mt-2 text-xs text-center text-slate-400">
+                                <i className="fas fa-save mr-1"></i> Tiến độ tự động lưu
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
+                            <div className="grid grid-cols-5 gap-2">
+                                {questions.map((_, idx) => {
+                                    const status = userAnswers[idx];
+                                    let btnClass = "h-9 rounded-lg text-xs font-bold transition-all duration-200 ";
+                                    if (status === undefined) {
+                                        btnClass += idx === currentIdx 
+                                            ? "bg-blue-600 text-white shadow-lg ring-2 ring-blue-200 transform scale-105" 
+                                            : "bg-slate-50 text-slate-500 hover:bg-slate-200 border border-slate-100";
+                                    } else {
+                                        const isQCorrect = status === questions[idx].correct;
+                                        btnClass += isQCorrect ? "bg-green-500 text-white" : "bg-red-500 text-white";
+                                        if (idx === currentIdx) btnClass += " ring-2 ring-slate-400 transform scale-105";
+                                    }
+                                    return (
+                                        <button key={idx} onClick={() => { if(timerRef.current) clearTimeout(timerRef.current); setCurrentIdx(idx); }} className={btnClass}>
+                                            {idx + 1}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </aside>
+
+                    <main className="flex-1 p-4 md:p-8 flex flex-col h-[70vh] md:h-screen overflow-hidden">
+                        <div className="flex flex-col md:flex-row justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-100 gap-4">
+                            <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">
+                                Câu hỏi {currentIdx + 1}
+                            </span>
+                            <div className="flex items-center gap-6">
+                                <div className="flex items-center gap-3" title="Đảo lộn vị trí đáp án khi làm lại đề">
+                                    <span className={`text-sm font-semibold ${isShuffleAnswers ? 'text-purple-600' : 'text-slate-400'}`}>
+                                        <i className="fas fa-random mr-1"></i> Trộn đáp án
+                                    </span>
+                                    <div className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                                        <input type="checkbox" className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0" checked={isShuffleAnswers} onChange={() => setIsShuffleAnswers(!isShuffleAnswers)} />
+                                        <label className={`toggle-label block overflow-hidden h-5 rounded-full cursor-pointer transition-colors duration-300 ${isShuffleAnswers ? 'bg-purple-500' : 'bg-slate-300'}`}></label>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className={`text-sm font-semibold ${isAutoNext ? 'text-blue-600' : 'text-slate-400'}`}>
+                                        <i className="fas fa-bolt mr-1"></i> Auto Next
+                                    </span>
+                                    <div className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                                        <input type="checkbox" className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0" checked={isAutoNext} onChange={() => setIsAutoNext(!isAutoNext)} />
+                                        <label className={`toggle-label block overflow-hidden h-5 rounded-full cursor-pointer transition-colors duration-300 ${isAutoNext ? 'bg-blue-500' : 'bg-slate-300'}`}></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 bg-white rounded-3xl shadow-xl p-6 md:p-10 border border-slate-100 overflow-y-auto custom-scrollbar relative">
+                            <div className="max-w-3xl mx-auto slide-in">
+                                <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-8 leading-snug">
+                                    {currentQ.q}
+                                </h2>
+                                <div className="space-y-4">
+                                    {currentQ.a.map((opt, optIdx) => {
+                                        let optionClass = "w-full p-5 rounded-2xl border-2 text-left relative transition-all duration-300 flex items-center gap-4 group ";
+                                        if (!isAnswered) {
+                                            optionClass += "border-slate-100 hover:border-blue-400 hover:bg-blue-50 hover:shadow-md cursor-pointer";
+                                        } else {
+                                            if (optIdx === currentQ.correct) {
+                                                optionClass += "border-green-500 bg-green-50 text-green-900 shadow-inner correct-pulse";
+                                            } else if (optIdx === userAnswers[currentIdx]) {
+                                                optionClass += "border-red-500 bg-red-50 text-red-900 opacity-90";
+                                            } else {
+                                                optionClass += "border-slate-50 opacity-40 grayscale";
+                                            }
+                                        }
+                                        return (
+                                            <button key={optIdx} disabled={isAnswered} onClick={() => handleAnswer(optIdx)} className={optionClass}>
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${isAnswered && optIdx === currentQ.correct ? 'bg-green-600 text-white' : isAnswered && optIdx === userAnswers[currentIdx] ? 'bg-red-500 text-white' : 'bg-slate-200 text-slate-500 group-hover:bg-blue-500 group-hover:text-white'}`}>
+                                                    {String.fromCharCode(65 + optIdx)}
+                                                </div>
+                                                <span className="font-medium text-lg">{opt}</span>
+                                                {isAnswered && optIdx === currentQ.correct && (
+                                                    <i className="fas fa-check-circle text-green-600 text-xl ml-auto animate-bounce"></i>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                {isAnswered && !isCorrect && (
+                                    <div className="mt-8 p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded-r-lg shadow-sm slide-in">
+                                        <p className="font-bold mb-1"><i className="fas fa-info-circle mr-2"></i> Đáp án đúng là:</p>
+                                        <p className="text-lg mb-2">{String.fromCharCode(65 + currentQ.correct)}. {currentQ.a[currentQ.correct]}</p>
+                                        {currentQ.explain && (
+                                            <div className="mt-2 text-sm text-yellow-700 italic border-t border-yellow-200 pt-2">
+                                                <i className="fas fa-lightbulb mr-1"></i> <strong>Giải thích:</strong> {currentQ.explain}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="mt-6 flex justify-between items-center max-w-3xl mx-auto w-full px-4">
+                            <button onClick={() => { if(timerRef.current) clearTimeout(timerRef.current); setCurrentIdx(Math.max(0, currentIdx - 1)); }} disabled={currentIdx === 0} className="text-slate-500 hover:text-blue-600 font-semibold disabled:opacity-30 transition-colors">
+                                <i className="fas fa-arrow-left mr-2"></i> Câu trước
+                            </button>
+                            <button onClick={() => { if(timerRef.current) clearTimeout(timerRef.current); setCurrentIdx(Math.min(questions.length - 1, currentIdx + 1)); }} disabled={currentIdx === questions.length - 1} className="bg-slate-800 hover:bg-black text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center gap-2">
+                                Câu tiếp theo <i className="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
