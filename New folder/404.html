@@ -2,678 +2,1560 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Luyện Thi Lý Sinh Y Học 1 (50 Câu)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hệ Thống Thi Trắc Nghiệm</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap');
-        body { background-color: #f8fafc; font-family: 'Be Vietnam Pro', sans-serif; }
-        .slide-in { animation: slideIn 0.3s ease-out forwards; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .correct-pulse { animation: correctPulse 0.5s cubic-bezier(0.4, 0, 0.6, 1); }
-        @keyframes correctPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
-        /* Toggle Switch */
-        .toggle-checkbox:checked { right: 0; border-color: #3b82f6; }
-        .toggle-checkbox:checked + .toggle-label { background-color: #3b82f6; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
         
-        /* Custom Scrollbar */
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
-        .shuffle-btn:active { transform: rotate(180deg); transition: transform 0.3s; }
+        .option-btn { transition: all 0.2s ease; border: 2px solid #e5e7eb; }
+        @media (hover: hover) { .option-btn:hover { border-color: #cbd5e1; background-color: #f8fafc; } }
+        .option-btn:active { transform: scale(0.98); }
+        .option-btn.selected { border-color: #3b82f6; background-color: #eff6ff; }
+        
+        /* Hiệu ứng mượt mà */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+        
+        /* Tùy chỉnh thanh cuộn */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
-<body>
-    <div id="root"></div>
+<body class="text-gray-800 h-screen flex flex-col overflow-hidden">
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef } = React;
+    <!-- Header -->
+    <header class="bg-white shadow-sm z-20 flex-shrink-0 relative">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-md">
+                    <i class="fas fa-file-alt text-lg"></i>
+                </div>
+                <h1 class="font-bold text-lg text-gray-800 line-clamp-1">KHCB 2 - Cuối Kỳ</h1>
+            </div>
+            
+            <div id="quiz-header-info" class="hidden flex items-center gap-3 sm:gap-4">
+                <div class="bg-gray-100 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-mono font-bold text-blue-600 flex items-center gap-2 text-sm sm:text-base">
+                    <i class="far fa-clock"></i> <span id="timer">00:00</span>
+                </div>
+                <button onclick="confirmSubmit()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm shadow-md">
+                    Nộp bài
+                </button>
+            </div>
+        </div>
+        <!-- Thanh tiến độ mỏng ở Header -->
+        <div id="top-progress-container" class="hidden absolute bottom-0 left-0 w-full h-1 bg-gray-200">
+            <div id="top-progress-bar" class="h-full bg-blue-500 transition-all duration-300" style="width: 0%"></div>
+        </div>
+    </header>
 
-        const STORAGE_KEY = 'LYSINH1_QUIZ_STATE_V1';
+    <!-- Khu vực chính chứa nội dung cuộn -->
+    <main class="flex-grow overflow-y-auto relative bg-gray-50 pb-24 sm:pb-8">
+        <div class="max-w-3xl mx-auto p-4 sm:p-6 lg:p-8">
 
-        // Dữ liệu 50 câu hỏi từ tài liệu Lý Sinh Y Học 1
-        const originalQuestionData = [
-            { 
-                id: 1, 
-                q: "Điện tâm đồ của người này so với người khác:", 
-                a: ["Đồng nhất về hình dạng của cùng một đơn sóng bất kì.", "Luôn giống nhau về thành phần các đơn sóng trong một chu kì điện tim.", "Khác nhau về biên độ của cùng một đơn sóng nào đó.", "Đồng nhất về thời khoảng của cùng một đơn sóng bất kì."], 
-                correct: 2,
-                explain: "Điện tâm đồ phụ thuộc vào đặc điểm sinh lý, bệnh lý và vị trí đặt điện cực của từng người, nên biên độ sóng sẽ khác nhau."
-            },
-            { 
-                id: 2, 
-                q: "Tác dụng quang động lực là sự tổn thương….. (I)… một số chức năng sinh lý và cấu trúc dưới tác dụng của ….. (II)….… với sự có mặt của ….(III)..…", 
-                a: ["I: không phục hồi, II: ánh sáng, III: ôxi + chất màu.", "I: có thể phục hồi, II: bức xạ ion hóa, III: ôxi + chất màu.", "I: có thể phục hồi, II: ánh sáng, III: ôxi + chất màu.", "I: không phục hồi, II: bức xạ ion hoá, III: ôxi + chất màu."], 
-                correct: 0,
-                explain: "Tác dụng quang động lực gây tổn thương không phục hồi dưới tác dụng của ánh sáng khả kiến với sự có mặt của oxy và chất cảm quang (chất màu)."
-            },
-            { 
-                id: 3, 
-                q: "Kích thích càng mạnh thì:", 
-                a: ["Xung điện động kéo dài càng lâu.", "Biên độ xung điện thế hoạt động càng lớn", "Vùng bị kích hoạt trên màng tế bào càng rộng", "Thời gian kéo dài và biên độ xung điện động vẫn không thay đổi"], 
-                correct: 3,
-                explain: "Theo quy luật 'tất cả hoặc không', nếu kích thích đạt ngưỡng, biên độ và thời gian xung điện động không thay đổi dù cường độ kích thích tăng lên."
-            },
-            { 
-                id: 4, 
-                q: "Mắt cận thị là mắt:", 
-                a: ["Chỉ có khả năng nhìn gần;", "có điểm cực viễn ở cách mắt một khoảng hữu hạn;", "Ở trạng thái thư giãn, có tiêu điểm ở trước võng mạc;", "Cả A, B, C đều đúng."], 
-                correct: 3,
-                explain: "Mắt cận thị có trục nhãn cầu dài hơn bình thường hoặc lực khúc xạ quá lớn, ảnh hiện trước võng mạc, điểm cực viễn hữu hạn."
-            },
-            { 
-                id: 5, 
-                q: "Về nguyên nhân tồn tại tính phóng xạ của các hạt nhân trong tự nhiên:", 
-                a: ["Các proton mang điện tích cùng dấu đẩy nhau nên hạt nhân không bền vững", "Lực liên kết giữa các nucleon không đủ mạnh để giữ hạt nhân bền vững", "Xu hướng hạt nhân nặng giải phóng dự trữ năng lượng lớn của nó", "Cả A, B, C đều đúng."], 
-                correct: 3,
-                explain: "Tính phóng xạ do sự mất cân bằng giữa lực hạt nhân và lực đẩy Coulomb, xu hướng giải phóng năng lượng để về trạng thái bền vững hơn."
-            },
-            { 
-                id: 6, 
-                q: "Điểm cực viễn của mắt không có tật là:", 
-                a: ["Điểm mà nhìn vào đó mắt phải điều tiết tối đa .", "Điểm xa nhất trên trục nhìn mà đặt vật ở đó, mắt còn nhìn thấy rõ, không cần điều tiết", "Điểm ở xa vô cùng trên trục nhìn ;", "Điểm xa nhất mà mắt còn nhìn rõ;"], 
-                correct: 1,
-                explain: "Mắt chính thị (không tật) khi thư giãn hoàn toàn (không điều tiết) sẽ nhìn rõ vật ở vô cực."
-            },
-            { 
-                id: 7, 
-                q: "Phương trình cân bằng vận chuyển điện tích qua màng tế bào được xây dựng trong điều kiện:", 
-                a: ["Có tính đến sự tham gia của các iôn hoá trị 2 như Ca++, Mg++….", "Không tính đến sự vận chuyển thụ động.", "Tổng điện tích được vận chuyển qua màng trong một đơn vị thời gian theo 2 hướng ngược nhau là bằng nhau.", "Chỉ tính đến sự vận chuyển hai loại ion K+, Cl- qua màng mà không tính đến sự vận chuyển của ion Na+."], 
-                correct: 2,
-                explain: "Trạng thái cân bằng động điện tích nghĩa là tổng dòng điện tích dương đi vào bằng tổng dòng đi ra (hoặc tổng đại số dòng = 0)."
-            },
-            { 
-                id: 8, 
-                q: "Quá trình nhìn có thể biểu diễn thông qua sơ đồ tổng hợp và phân hủy sắc tố thị giác: Rodopxin <-> opxin + Retinal. Khi độ rọi sáng tăng:", 
-                a: ["hàm lượng Rodopxin được điều chỉnh thông qua phản ứng hóa sinh trung gian.", "cân bằng sẽ dịch chuyển sang phải", "cân bằng sẽ dịch chuyển sang trái.", "hàm lượng Rodopxin được điều chỉnh bằng cách bổ xung Retinal lấy từ vitamin A dự trữ."], 
-                correct: 1,
-                explain: "Khi có ánh sáng (độ rọi tăng), Rodopxin bị phân hủy thành Opxin và Retinal (phản ứng quang hóa), cân bằng dịch sang phải."
-            },
-            { 
-                id: 9, 
-                q: "Chọn nhận xét đúng về thị giác Scoto:", 
-                a: ["Các tế bào que và tế bào nón cùng tham gia vào quá trình này", "Trong quá trình nhìn này Rodopxin phân hủy thành Opxin và Retinal", "Chỉ có các tế bào nón tham gia vào quá trình này", "Ánh sáng tác dụng lên mắt trong thị giác Scoto có độ rọi lớn."], 
-                correct: 1,
-                explain: "Thị giác Scoto (nhìn đêm) chủ yếu do tế bào que đảm nhận, sắc tố Rodopxin phân hủy khi có ánh sáng yếu kích thích."
-            },
-            { 
-                id: 10, 
-                q: "Đặc điểm khác nhau giữa điện thế nghỉ và điện thế hoạt động: I. Tính định xứ; II. Thời gian tồn tại; III. Dấu của điện thế. Ta chọn:", 
-                a: ["I và III", "II và III", "I, II và III", "I và II"], 
-                correct: 2,
-                explain: "Điện thế nghỉ: ổn định, định xứ, trong âm ngoài dương. Điện thế hoạt động: biến đổi nhanh (xung), lan truyền, đảo cực (trong dương ngoài âm)."
-            },
-            { 
-                id: 11, 
-                q: "Tác dụng của dòng điện lên cơ thể:", 
-                a: ["Dòng một chiều làm thay đổi tính thấm màng tế bào do đó có thể làm tăng trao đổi chất.", "Gây tử vong chủ yếu do toả nhiệt.", "Dòng một chiều gây kích thích cơ và thần kinh là chủ yếu.", "Xung điện gây các phản ứng hoá học trong cơ thể và dưới các điện cực."], 
-                correct: 0,
-                explain: "Dòng một chiều đều (Galvanic) gây phân cực màng, thay đổi tính thấm, tăng trao đổi chất (liệu pháp Galvanic)."
-            },
-            { 
-                id: 12, 
-                q: "Về kính sửa tật cận thị:", 
-                a: ["Mắt cận thị đeo kính phân kỳ để nhìn rõ vật ở gần như mắt không tật.", "Mắt cận thị đeo kính hội tụ để nhìn rõ vật ở xa vô cực như mắt không tật.", "Mắt cận thị đeo kính hội tụ để nhìn rõ vật ở gần như mắt không tật.", "Mắt cận thị đeo kính phân kỳ để nhìn rõ vật ở xa vô cực như mắt không tật."], 
-                correct: 3,
-                explain: "Kính phân kỳ (độ tụ âm) giúp đưa ảnh của vật ở vô cực về điểm cực viễn của mắt cận."
-            },
-            { 
-                id: 13, 
-                q: "Đặc điểm của phương pháp đánh dấu phóng xạ:", 
-                a: ["Khối lượng chất đánh dấu phóng xạ thường rất nhỏ.", "Chỉ có thể đưa chất phóng xạ vào cơ thể bằng hình thức tiêm hoặc uống.", "Có thể dùng chất phóng xạ có sẵn trong cơ thể.", "Chỉ đánh dấu PX được các chất vô cơ mà không đánh dấu với các chất hữu cơ vì khối lượng của chúng quá lớn."], 
-                correct: 0,
-                explain: "Phương pháp này dùng lượng rất nhỏ chất phóng xạ (vết) để không làm rối loạn sinh lý cơ thể nhưng vẫn đủ để ghi đo."
-            },
-            { 
-                id: 14, 
-                q: "Xác định phát biểu sai về cơ sở phân tử của sự thụ cảm ánh sáng:", 
-                a: ["Ở tế bào que có Iodopxin, ở tế bào nón có Rodopxin là các sắc tố thụ cảm ánh sáng.", "Ở võng mạc người ta thấy có các tế bào thụ cảm ánh sáng là tế bào nón và tế bào que.", "Sự tái tạo Rodopxin (hoặc Iodopxin) trong bóng tối được thực hiện dưới tác dụng của năng lượng hoá sinh.", "Phản ứng quang hoá phân huỷ Iodop xin (hoặc Rodopxin) làm phát sinh các xung động thần kinh truyền vào dây thần kinh thị giác."], 
-                correct: 0,
-                explain: "Sai vì: Tế bào que chứa Rodopxin (nhìn đêm), tế bào nón chứa Iodopxin (nhìn ngày/màu)."
-            },
-            { 
-                id: 15, 
-                q: "Trong hiệu ứng quang động lực, tác dụng của ánh sáng lên cơ thể sống là:", 
-                a: ["Tác dụng trực tiếp", "Tác dụng tổng hợp", "Tác dụng gián tiếp", "Tác dụng phân tích"], 
-                correct: 2,
-                explain: "Ánh sáng tác dụng gián tiếp thông qua chất cảm quang (chất màu) và oxy để gây tổn thương tế bào."
-            },
-            { 
-                id: 16, 
-                q: "Khả năng hội tụ chùm tia laser vào một điểm rất nhỏ đạt được là nhờ:", 
-                a: ["Tính đơn sắc của chùm tia laser.", "Tính kết hợp của chùm tia laser.", "Tia laser có thể tồn tại ở dạng xung.", "Tia laser có cường độ lớn."], 
-                correct: 1,
-                explain: "Tính kết hợp cao (cùng pha, cùng tần số) cho phép chùm tia hầu như không phân kỳ và hội tụ cực tốt."
-            },
-            { 
-                id: 17, 
-                q: "Khả năng phân ly của kính hiển vi bị giới hạn bởi hiện tượng:", 
-                a: ["Giao thoa ánh sáng.", "Nhiễu xạ ánh sáng.", "Hấp thụ ánh sáng.", "Phản xạ ánh sáng."], 
-                correct: 1,
-                explain: "Nhiễu xạ ánh sáng qua vật kính làm ảnh của một điểm trở thành một vết, giới hạn khả năng phân biệt 2 điểm gần nhau."
-            },
-            { 
-                id: 18, 
-                q: "Mức độ gây nguy hiểm của dòng điện khi đi qua cơ thể chủ yếu được quyết định bởi:", 
-                a: ["Đường dẫn truyền qua cơ thể", "Tần số của dòng điện", "Hiệu điện thế đặt vào cơ thể", "Cường độ dòng điện đi qua cơ thể"], 
-                correct: 3,
-                explain: "Cường độ dòng điện là yếu tố trực tiếp gây kích thích thần kinh cơ, rung tim và tỏa nhiệt (I càng lớn càng nguy hiểm)."
-            },
-            { 
-                id: 19, 
-                q: "Chọn cụm từ thích hợp: Từ các cơ chế của tác dụng quang động lực người ta thấy chất màu đóng vai trò xúc tác quang hoá ở trạng thái .............(I)................ và nó ...............(II)............. ở cuối phản ứng.", 
-                a: ["I : triplet ; II : bị phân huỷ", "I : singlet ; II : được tái tạo", "I : singlet ; II : bị phân huỷ", "I : triplet ; II : được tái tạo"], 
-                correct: 3,
-                explain: "Chất màu hấp thụ photon chuyển sang trạng thái kích thích Triplet (bền hơn Singlet) để truyền năng lượng và được tái tạo sau phản ứng."
-            },
-            { 
-                id: 20, 
-                q: "Cận thị là tật của mắt mà khi mắt không điều tiết thì:", 
-                a: ["Không nhìn rõ những vật ở gần.", "Tiêu điểm của mắt nằm trước võng mạc.", "Tiêu điểm của mắt nằm sau võng mạc.", "Ảnh của các vật ở vô cùng hiện lên ở điểm cực viễn của mắt."], 
-                correct: 1,
-                explain: "Khi không điều tiết (nhìn xa), tiêu điểm của mắt cận nằm trước võng mạc (do độ tụ lớn hoặc trục mắt dài)."
-            },
-            { 
-                id: 21, 
-                q: "Có 4 chùm hạt α, β+, β-, γ cùng mật độ (thí dụ 10 hạt / cm2.s) cùng xuyên vào tấm chì dày 5 cm, sau tấm chì ta thấy còn có các loại hạt:", 
-                a: ["Tia γ", "β+, β- và tia γ", "Không có hạt nào", "γ và β-"], 
-                correct: 2,
-                explain: "Chì 5cm chắn được tia gamma (giảm cường độ rất nhiều), và chắn hoàn toàn alpha, beta. Tuy nhiên thực tế tia Gamma có khả năng đâm xuyên mạnh nhất, nhưng với chì dày 5cm thì hầu như cũng bị hấp thụ hoặc tán xạ gần hết hoặc còn lại rất ít gamma. Trong các đáp án, C là hợp lý nhất nếu xét khả năng chắn xạ của chì dày."
-            },
-            { 
-                id: 22, 
-                q: "Ảnh cắt lớp sử dụng tín hiệu là ….(I)……..cho chúng ta thông tin về cấu trúc của phần tử thể tích, tức là …. (II) ….", 
-                a: ["(I) : thời gian hồi phục T1, T2, (II) : chứa nhiều loại chất gì : máu , chất dịch, não hay tuỷ….", "(I) : tín hiệu cảm ứng suy giảm tự do FID, (II) : chứa nhiều loại chất gì : chất dịch, não hay tuỷ….", "(I) : tín hiệu cảm ứng suy giảm tự do FID, (II) : chứa nước, mỡ hay máu…", "(I) : thời gian hồi phục T1, T2, (II) : chứa nhiều hay ít proton (mật độ proton)"], 
-                correct: 3,
-                explain: "MRI sử dụng thời gian hồi phục T1, T2 và mật độ proton để tái tạo hình ảnh cấu trúc mô."
-            },
-            { 
-                id: 23, 
-                q: "Xác định phát biểu sai về hiệu ứng sinh học của tia phóng xạ đối với cơ thể sống:", 
-                a: ["Tế bào có thể mất khả năng phân chia.", "Nhân tế bào bị tổn thương ít hơn so với màng.", "Các phân tử protein bị đứt gãy làm giảm khả năng hoạt động chức năng một số mô.", "Cấu trúc của ADN có thể bị thay đổi tạo ADN dị thường."], 
-                correct: 1,
-                explain: "Sai vì: Nhân tế bào (chứa ADN) nhạy cảm với phóng xạ hơn màng tế bào rất nhiều và là đích tác dụng chính gây tổn thương di truyền/chết tế bào."
-            },
-            { 
-                id: 24, 
-                q: "Vật kính và thị kính trong kính hiển vi có vai trò:", 
-                a: ["Vật kính tạo ra ảnh ảo rất lớn của vật cần quan sát và thị kính dùng như một kính lúp để quan sát ảnh ảo nói trên;", "Thị kính tạo ra ảnh thật rất lớn của vật cần quan sát, vật kính dùng như một kính lúp để quan sát ảnh nói trên;", "Thị kính tạo ra ảnh ảo rất lớn của vật cần quan sát, vật kính dùng như một kính lúp để quan sát ảnh nói trên;", "Vật kính tạo ra một ảnh thật rất lớn của vật cần quan sát và thị kính dùng như một kính lúp để quan sát ảnh nói trên."], 
-                correct: 3,
-                explain: "Vật kính tạo ảnh thật lớn (nằm trong tiêu cự thị kính), thị kính đóng vai trò kính lúp quan sát ảnh thật đó (tạo ảnh ảo lớn hơn)."
-            },
-            { 
-                id: 25, 
-                q: "Cơ sở của phương pháp phân tích cấu trúc vĩ mô bằng tia X (phương pháp chẩn đoán bằng hình ảnh do tia X tạo ra):", 
-                a: ["Tia X là sóng điện từ có bước sóng nhỏ hơn 10-2 m.", "Tia X mang năng lượng ε = hf", "Tia X phản xạ, khúc xạ giống như ánh sáng.", "Định luật hấp thụ tia X: I = I0. e^-μx"], 
-                correct: 3,
-                explain: "Hình ảnh X-quang dựa trên sự hấp thụ tia X khác nhau của các mô (xương hấp thụ nhiều, mô mềm ít), tuân theo định luật hấp thụ."
-            },
-            { 
-                id: 26, 
-                q: "Cơ sở của cơ chế tác dụng trực tiếp của các bức xạ iôn hoá lên cơ thể sống:", 
-                a: ["ảnh hưởng của hàm lượng nước và nhiệt độ đối với các hiệu ứng sinh học do chiếu xạ", "ảnh hưởng của nồng độ oxy đối đối với các hiệu ứng sinh học do chiếu xạ", "Bức xạ ion hóa có khả năng kích thích hoặc ion hóa mọi loại phân tử, bao gồm cả các đại phân tử hữu cơ", "Sự xuất hiện của các gốc tự do và phân tử H2O2 trong đối tượng bị chiếu xạ"], 
-                correct: 2,
-                explain: "Tác dụng trực tiếp là tia phóng xạ va chạm trực tiếp gây ion hóa/kích thích các phân tử sinh học quan trọng (ADN, Protein)."
-            },
-            { 
-                id: 27, 
-                q: "Chọn cụm từ thích hợp: Khả năng đâm xuyên của các bức xạ hãm trong chùm tia X phụ thuộc vào ...................", 
-                a: ["Bản chất kim loại làm anốt.", "Cường độ dòng đốt nóng katốt.", "Hiệu điện thế anốt-katốt.", "Bản chất kim loại làm katốt."], 
-                correct: 2,
-                explain: "Hiệu điện thế Uak càng lớn, năng lượng electron đập vào đối càng lớn -> photon tia X có năng lượng càng cao -> đâm xuyên càng mạnh (tia cứng)."
-            },
-            { 
-                id: 28, 
-                q: "Lân quang là sự bức xạ lượng tử ánh sáng do các phân tử, nguyên tử phát ra khi chúng:", 
-                a: ["Chuyển từ trạng thái kích thích singlet về trạng thái cơ bản.", "Chuyển từ trạng thái kích thích triplet về trạng thái cơ bản.", "Chuyển từ trạng thái kích thích mạnh về trạng thái kích thích yếu hơn.", "Chuyển từ trạng thái kích thích triplet này sang trạng thái kích thích triplet khác."], 
-                correct: 1,
-                explain: "Lân quang liên quan đến trạng thái Triplet (bền, sống lâu), khi chuyển về cơ bản sẽ phát quang kéo dài (lân quang)."
-            },
-            { 
-                id: 29, 
-                q: "Ánh sáng bị tán sắc bởi lăng kính thuỷ tinh vì:", 
-                a: ["Mỗi màu có bước sóng riêng", "Lăng kính trong suốt", "Ánh sáng trắng có bảy màu", "Chiết suất thuỷ tinh đối với ánh sáng đơn sắc có khác nhau thì khác nhau."], 
-                correct: 3,
-                explain: "Chiết suất n phụ thuộc vào bước sóng ánh sáng (n đỏ < n tím), do đó góc lệch khi qua lăng kính khác nhau gây tán sắc."
-            },
-            { 
-                id: 30, 
-                q: "Nhận xét về quĩ đạo của các hạt vi mô tích điện khi xuyên vào vật chất:", 
-                a: ["Quĩ đạo hạt proton là đường ngoằn ngoèo, gấp khúc", "Quĩ đạo hạt β- là đường thẳng", "Quĩ đạo hạt β- là đường ngoằn nghoèo, gấp khúc", "Quĩ đạo hạt α là đường ngoằn nghèo, gấp khúc"], 
-                correct: 2,
-                explain: "Hạt beta (electron) có khối lượng nhỏ, dễ bị lệch hướng khi va chạm, nên quỹ đạo gấp khúc. Hạt alpha nặng nên đi thẳng."
-            },
-            { 
-                id: 31, 
-                q: "Dùng ............ để rút lại lượng nước thừa từ buồng trước của mắt để chống lại sự tăng nhãn áp.", 
-                a: ["dung dịch đẳng trương", "dung dịch ưu trương", "dung dịch nhược trương", "dung dịch muối"], 
-                correct: 1,
-                explain: "Dung dịch ưu trương có áp suất thẩm thấu cao hơn, sẽ hút nước từ nơi có áp suất thấp hơn (buồng mắt) ra ngoài."
-            },
-            { 
-                id: 32, 
-                q: "Các cơ chế vận chuyển vật chất qua màng tế bào:", 
-                a: ["Vận chuyển thụ động với sự giúp đỡ của các protein vận chuyển và năng lượng ATP", "Vận chuyển tích cực với sự giúp đỡ của các chất mang và năng lượng dự trữ trong các loại gradient ở vùng màng.", "Khuếch tán đơn giản qua lớp lipid kép đối với các phân tử khí, phân tử thích nước và có kích thước nhỏ", "Khuếch tán qua các kênh protein và kênh ion dành cho các phân tử thích nước và các ion"], 
-                correct: 3,
-                explain: "Kênh protein/ion cho phép các chất phân cực, ion (thích nước) đi qua màng theo gradient nồng độ (thụ động)."
-            },
-            { 
-                id: 33, 
-                q: "Áp suất phụ tác dụng lên mặt thoáng cong của chất lỏng:", 
-                a: ["Có độ lớn tỷ lệ nghịch với khối lượng riêng của chất lỏng và độ cong của mặt thoáng.", "Có chiều độc lập với sự định hướng của mặt cong.", "Có độ lớn phụ thuộc vào bản chất của chất lỏng và độ cong của mặt thoáng.", "Có phương luôn tiếp xúc với mặt thoáng."], 
-                correct: 2,
-                explain: "Áp suất phụ (Laplace) P = 2σ/R, phụ thuộc hệ số căng mặt ngoài (bản chất chất lỏng) và bán kính cong R (độ cong)."
-            },
-            { 
-                id: 34, 
-                q: "Tại phổi oxi O2 được khuếch tán từ phế nang vào các mao tĩnh mạch, còn khí cacbonic CO2 được khuếch tán từ mao tĩnh mạch vào phế nang là do:", 
-                a: ["phân áp O2 ở phế nang cao hơn ở tĩnh mạch", "phân áp O2 ở mao tĩnh mạch cao hơn ở phế nang", "phân áp CO2 ở phế nang cao hơn ở mao tĩnh mạch", "phân áp CO2 ở phế nang thấp hơn môi trường"], 
-                correct: 0,
-                explain: "Khuếch tán khí tuân theo gradient phân áp: đi từ nơi phân áp cao đến nơi thấp (O2: Phế nang > Máu; CO2: Máu > Phế nang)."
-            },
-            { 
-                id: 35, 
-                q: "Giữa hai đầu một đoạn mạch trong hệ tuần hoàn yếu tố nào sau đây không thay đổi:", 
-                a: ["Áp suất", "Vận tốc", "Năng lượng", "Lưu lượng"], 
-                correct: 3,
-                explain: "Theo định luật bảo toàn dòng chảy (phương trình liên tục), lưu lượng máu (Q = S.v) trong hệ mạch kín là hằng số."
-            },
-            { 
-                id: 36, 
-                q: "Dung dịch:", 
-                a: ["Dung dịch ưu trương có áp suất thẩm thấu nhỏ hơn áp suất thẩm thấu của dung dịch chuẩn.", "Dung dịch nhược trương có áp suất thẩm thấu lớn hơn áp suất thẩm thấu của dung dịch chuẩn.", "Tế bào để trong dung dịch nhược trương sẽ bị mất nước và teo lại.", "Dung dịch đẳng trương có áp suất thẩm thấu bằng áp suất thẩm thấu của dung dịch chuẩn."], 
-                correct: 3,
-                explain: "Đẳng trương: Ptt bằng nhau. Ưu trương: Ptt cao hơn. Nhược trương: Ptt thấp hơn."
-            },
-            { 
-                id: 37, 
-                q: "Khi cơ thể chuyển từ trạng thái nghỉ ngơi sang trạng thái hoạt động tích cực, biện pháp quan trọng và hiệu quả nhất mà hệ tuần hoàn đã thực hiện để cung cấp đủ oxi và các chất dinh dưỡng là:", 
-                a: ["Giảm bớt hoạt động của một số tổ chức không cần thiết nhằm ổn định lưu lượng máu lưu thông trong hệ mạch", "Giãn mạch để tăng lưu lượng máu lưu thông theo công thức Poadơ", "Tăng nhịp đập của tim.", "Tăng áp suất máu để đẩy được một lượng máu lớn vào hệ mạch theo công thức Poadơ."], 
-                correct: 1,
-                explain: "Theo công thức Poiseuille, lưu lượng Q tỷ lệ với lũy thừa bậc 4 của bán kính mạch (R^4). Giãn mạch (tăng R) tăng Q cực nhanh và hiệu quả nhất."
-            },
-            { 
-                id: 38, 
-                q: "Về siêu âm:", 
-                a: ["Một thanh sắt từ khi bị từ hóa thì chiều dài của nó tăng lên một chút, đó là hiện tượng từ giảo.", "Các chất dùng làm nguồn phát và thu siêu âm có khả năng biến dạng lớn dưới tác dụng của ngoại lực và có khả năng đàn hồi lớn.", "Nguyên tắc thu siêu âm dựa vào hiệu ứng áp điện nghịch.", "Nguyên tắc phát siêu âm dựa vào hiệu ứng áp điện thuận và hiện tượng từ giảo."], 
-                correct: 0,
-                explain: "Hiện tượng từ giảo: vật liệu sắt từ thay đổi kích thước khi đặt trong từ trường biến thiên, dùng để phát siêu âm."
-            },
-            { 
-                id: 39, 
-                q: "Nếu con người từ tư thế nằm chuyển sang tư thế đứng:", 
-                a: ["ở kỳ tâm trương lượng máu từ các tĩnh mạch dưới đổ về tim bị giảm bớt.", "do tác dụng của trọng lực áp suất máu ở chi dưới thay đổi đáng kể.", "áp suất máu do tim co bóp tăng lên.", "khối lượng máu được tim đẩy ra sau một lần co bóp không đổi."], 
-                correct: 1,
-                explain: "Khi đứng, áp suất thủy tĩnh tăng thêm ở chi dưới (P = P_tim + ro*g*h), làm áp suất máu ở chân tăng cao so với khi nằm."
-            },
-            { 
-                id: 40, 
-                q: "Tính chất của chùm siêu âm:", 
-                a: ["Với 2 chùm siêu âm có cường độ như nhau, chùm siêu âm có tần số càng lớn thì khả năng xuyên sâu vào cơ thể càng lớn", "Trong quá trình lan truyền của sóng siêu âm khi gặp các vật cản có thể xảy ra hiện tượng nhiễu xạ", "Với kích thước và hình dạng thích hợp của đầu phát có thể thu được chùm siêu âm có độ phân kỳ nhỏ", "Sóng siêu âm khi lan truyền cũng có các tính chất tương tự như sóng âm"], 
-                correct: 2,
-                explain: "Sóng siêu âm có bước sóng ngắn nên ít bị nhiễu xạ, dễ tạo chùm tia định hướng (ít phân kỳ) để chẩn đoán."
-            },
-            { 
-                id: 41, 
-                q: "Hai âm phức tạp khác nhau mà có cùng tần số, độ to thì khác nhau bởi:", 
-                a: ["Biên độ áp suất gây ra tại màng nhĩ.", "Thành phần dao động điều hoà hình sin đã tạo nên mỗi âm.", "Độ cao của âm", "Cả A, B, C."], 
-                correct: 1,
-                explain: "Đây là đặc trưng Âm sắc (timbre), phụ thuộc vào đồ thị dao động âm (tập hợp các họa âm/thành phần điều hòa)."
-            },
-            { 
-                id: 42, 
-                q: "Sóng âm:", 
-                a: ["Là sóng ngang lan truyền được trong môi trường đàn hồi, có tần số từ 16Hz đến 20.000Hz.", "Là sóng dọc lan truyền được trong mọi môi trường.", "Là sóng dọc lan truyền trong môi trường đàn hồi, có tần số từ 16Hz đến 20.000Hz.", "Là sóng ngang lan truyền được trong mọi môi trường, kể cả chân không."], 
-                correct: 2,
-                explain: "Sóng âm trong chất lỏng/khí là sóng dọc, miền nghe thấy của người là 16-20.000Hz."
-            },
-            { 
-                id: 43, 
-                q: "Trong 4 đặc trưng của sóng dưới đây, đặc trưng nào không liên quan đến các đặc trưng còn lại:", 
-                a: ["Vận tốc truyền sóng.", "Bước sóng.", "Biên độ", "Tần số sóng."], 
-                correct: 2,
-                explain: "Bước sóng = Vận tốc / Tần số. Ba đại lượng này liên hệ với nhau. Biên độ (năng lượng) độc lập với chu kỳ/tần số."
-            },
-            { 
-                id: 44, 
-                q: "Sự trao đổi chất xảy ra ở thành mao mạch có động lực là:", 
-                a: ["gradien áp suất thủy tĩnh, thủy động ở thành mao mạch", "các loại gradien nồng độ ở thành mao mạch", "các loại gradien áp suất ở thành mao mạch", "gradien áp suất thẩm thấu ở thành mao mạch"], 
-                correct: 2,
-                explain: "Động lực chính là sự chênh lệch (gradient) các loại áp suất: Áp suất thủy tĩnh (lọc) và Áp suất keo/thẩm thấu (tái hấp thu) - Cơ chế Starling."
-            },
-            { 
-                id: 45, 
-                q: "Hiện tượng nào có liên quan đến bệnh màng phổi ở trẻ sơ sinh đẻ non:", 
-                a: ["Hiện tượng thẩm thấu", "Hiện tượng tràn khí màng phổi", "Hiện tượng mao dẫn", "Hiện tượng căng mặt ngoài"], 
-                correct: 3,
-                explain: "Thiếu chất hoạt diện (Surfactant) làm tăng sức căng mặt ngoài phế nang, gây xẹp phổi (Hội chứng suy hô hấp sơ sinh)."
-            },
-            { 
-                id: 46, 
-                q: "Trong hiệu ứng Doppler, f là tần số sóng từ nguồn phát ra, f’ là tần số sóng máy thu sẽ thu được, ta có: I. Nguồn và máy thu đi xa nhau f’ > f; II. Nguồn và máy thu đi lại gần nhau f’ < f. Ta thấy:", 
-                a: ["I sai II đúng", "I và II đều sai", "I và II đều đúng", "I đúng II sai"], 
-                correct: 1,
-                explain: "Cả 2 đều sai. Đúng là: Lại gần nhau f' > f (tần số tăng); Đi xa nhau f' < f (tần số giảm)."
-            },
-            { 
-                id: 47, 
-                q: "Áp suất máu giảm dần từ cửa thất trái đến cửa nhĩ phải thì khoảng làm giảm áp suất nhiều nhất là:", 
-                a: ["Tiểu động mạch và tiểu tĩnh mạch.", "Tĩnh mạch chủ.", "Mao động mạch và mao tĩnh mạch.", "Động mạch chủ."], 
-                correct: 2,
-                explain: "Hệ thống mao mạch có tổng tiết diện lớn nhất và sức cản lớn, làm áp suất máu giảm mạnh nhất khi đi qua đây."
-            },
-            { 
-                id: 48, 
-                q: "Sự hình thành cảm giác âm ở cơ quan thính giác người.", 
-                a: ["Độ to của âm có được căn cứ vào tốc độ lan truyền của xung kích thích về thần kinh trung ương.", "Âm có tần số lớn tạo ra chuyển động xoáy kích thích vị trí gần với đỉnh ốc tai của màng đáy.", "Cảm giác độ cao hình thành phụ thuộc vào vị trí sóng âm kích thích màng đáy ở tai trong", "Âm sắc hình thành trên cơ sở số lượng xung thần kinh được truyền tới thần kinh trung ương."], 
-                correct: 2,
-                explain: "Thuyết vị trí (Place theory): Tần số cao kích thích đáy ốc tai, tần số thấp kích thích đỉnh ốc tai -> Phân biệt độ cao."
-            },
-            { 
-                id: 49, 
-                q: "Người ta thấy các đặc trưng của cảm giác âm phụ thuộc vào các đặc trưng vật lý:", 
-                a: ["Độ to không phụ thuộc vào tần số âm.", "Âm sắc phụ thuộc vào tần số âm.", "Độ to của âm phụ thuộc vào cường độ âm.", "Độ cao của âm phụ thuộc vào thành phần cấu tạo âm."], 
-                correct: 2,
-                explain: "Độ to là đặc trưng sinh lý tương ứng với Cường độ âm (và tần số) - đặc trưng vật lý."
-            },
-            { 
-                id: 50, 
-                q: "Để bù sự mất máu do bị thương hay mất nước do tiêu chảy, người ta đưa vào cơ thể một lượng dung dịch:", 
-                a: ["Đẳng trương so với máu.", "Nồng độ tùy tình trạng người bệnh.", "Nhược trương so với máu.", "Ưu trương so với máu."], 
-                correct: 0,
-                explain: "Dung dịch đẳng trương (như NaCl 0.9%) giúp bù thể tích tuần hoàn mà không gây vỡ hay teo hồng cầu."
-            }
-        ];
-
-        // Hàm trộn mảng
-        const shuffleArray = (array) => {
-            const newArray = [...array];
-            for (let i = newArray.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-            }
-            return newArray;
-        };
-
-        const App = () => {
-            // Khởi tạo state từ Local Storage nếu có
-            const [questions, setQuestions] = useState(() => {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                if (saved) {
-                    try {
-                        const parsed = JSON.parse(saved);
-                        if (parsed.questions) return parsed.questions;
-                    } catch (e) {
-                        console.error("Lỗi đọc cache câu hỏi", e);
-                    }
-                }
-                return originalQuestionData;
-            });
-
-            const [currentIdx, setCurrentIdx] = useState(() => {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                return saved ? JSON.parse(saved).currentIdx || 0 : 0;
-            });
-
-            const [userAnswers, setUserAnswers] = useState(() => {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                return saved ? JSON.parse(saved).userAnswers || {} : {};
-            });
-
-            const [isAutoNext, setIsAutoNext] = useState(() => {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                return saved ? JSON.parse(saved).isAutoNext ?? true : true;
-            });
-
-            const [isShuffleAnswers, setIsShuffleAnswers] = useState(() => {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                return saved ? JSON.parse(saved).isShuffleAnswers ?? false : false;
-            });
-
-            const timerRef = useRef(null);
-
-            // Lưu vào Local Storage mỗi khi state thay đổi
-            useEffect(() => {
-                const stateToSave = {
-                    questions,
-                    currentIdx,
-                    userAnswers,
-                    isAutoNext,
-                    isShuffleAnswers
-                };
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-            }, [questions, currentIdx, userAnswers, isAutoNext, isShuffleAnswers]);
-
-            useEffect(() => {
-                return () => {
-                    if (timerRef.current) clearTimeout(timerRef.current);
-                };
-            }, []);
-
-            const resetAndShuffle = () => {
-                if (timerRef.current) clearTimeout(timerRef.current);
+            <!-- 1. MÀN HÌNH BẮT ĐẦU -->
+            <div id="setup-screen" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-10 animate-fade text-center">
+                <div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
+                    <i class="fas fa-graduation-cap"></i>
+                </div>
+                <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">Sẵn sàng làm bài?</h2>
+                <p class="text-gray-500 mb-8 leading-relaxed">Hệ thống đã nạp sẵn dữ liệu câu hỏi từ tài liệu. Các đáp án đúng đã được hệ thống tự động ghi nhận và ẩn đi.</p>
                 
-                let newQuestionList = shuffleArray(originalQuestionData);
+                <div class="grid grid-cols-2 gap-4 mb-8">
+                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <p id="total-q-display" class="text-3xl font-bold text-blue-600">...</p>
+                        <p class="text-xs font-semibold text-gray-500 uppercase mt-1">Câu hỏi</p>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <p class="text-3xl font-bold text-green-600">60</p>
+                        <p class="text-xs font-semibold text-gray-500 uppercase mt-1">Phút</p>
+                    </div>
+                </div>
 
-                if (isShuffleAnswers) {
-                    newQuestionList = newQuestionList.map(q => {
-                        const answersWithStatus = q.a.map((ans, idx) => ({
-                            text: ans,
-                            isCorrect: idx === q.correct
-                        }));
-                        const shuffledAnswers = shuffleArray(answersWithStatus);
-                        return {
-                            ...q,
-                            a: shuffledAnswers.map(item => item.text),
-                            correct: shuffledAnswers.findIndex(item => item.isCorrect),
-                            explain: q.explain // Giữ nguyên giải thích
-                        };
-                    });
-                }
+                <!-- Khu vực chứa data ẩn (chứa đề bài của bạn) -->
+                <textarea id="raw-data" class="hidden">
+Câu 1: Vị trí của màng rụng tử cung ở cuối tháng thứ 2 thời kỳ phôi thai là:
+A) Nằm giữa trứng và cơ tử cung
+B) Đối diện với màng rụng trứng#
+C) Phủ trên bề mặt trứng
+D) Nằm giữa trứng và mạng rụng rau
+Câu 2: Nụ tụy bụng tiến tới sáp nhập với nụ tụy lưng theo sự phát triển của cấu
+trúc sau:
+A) Khi tá tràng xoay sang phải#
+B) Khi tá tràng xoay sang trái
+C) Khi hình thành ống mật chủ
+D) Khi hình thành các ống tụy
+Câu 3: Trong quá trình phát triển đoạn của ống tim nguyên thủy, hành tim là
+nguồn gốc của cấu trúc sau:
+A) Tâm nhĩ trái
+B) Tâm thất phải#
+C) Quai động mạch chủ
+D) Tâm nhĩ phải
+Câu 4: Sự phát triển bình thường của mầm gan nguyên thủy không có đặc điểm
+sau:
+A) Là một máng dọc
+B) Phía đầu phôi tạo thành mầm gan đầu
+C) Phía đuôi phôi tạo thành mầm gan đuôi
+D) Hai mầm gan có ống mở riêng vào tá tràng#
+Câu 5: Khí vách niệu – trực tràng hình thành hoàn toàn, phần cuối của ống ruột
+nguyên thủy sẽ trở thành cấu trúc sau:
+A) Ông hậu môn#
+B) Ông niệu nang
+C) Ông noãn hoàng
+D) Ống niệu quản
+Câu 6: Thai phụ Nguyễn Thị V, 32 tuổi, có thai 28 tuần đến viện khám vì thấy ra
+máu tươi ở âm đạo. Kết quả thăm khám và siêu âm là rau tiền đạo bám bên.
+Trong trường hợp trên bánh rau bám ở vị trí sau:
+A) Bám ở lỗ trong ống cổ tử cung
+B) Bịt một phần lỗ trong ống cổ tử cung#
+C) Bám thân tử cung
+D) Bịt kín lỗ trong ống cổ tử cung
+Câu 7: Sự hình thành vách khí – thực quản không gây ra dị tật sau:
+A) Tật thực quản đơn tính
+.B) Tật dò đoạn dưới khí – thực quản
+C) Tật dò khí – thực quản
+D) Tật thùy phổi lạc chỗ#
+Câu 8: Sau sinh 24 giờ, trẻ gái được phát hiện có phân su đẩy ra ở âm đạo và
+không có lỗ hậu môn. Nguyên nhân dẫn đến dị tật này là:
+A) Không hình thành vách niệu trực tràng
+B) Màng hậu môn không teo đi
+C) Vách niệu trực tràng không dài xuống dưới đầy đủ#
+D) Không có hạch thần kinh phó giao cảm ở thành ruột
+Câu 9: Túi thừa hô hấp (nụ phổi) có nguồn gốc từ:
+A) Thành lưng của ruột trước
+B) Thành bụng của ruột trước#
+C) Đoạn cuối ruột trước
+D) Đoạn đầu ruột giữa
+Câu 10: Một thai phụ 36 tuổi có thai lần đầu vào viện sinh, kết quả siêu âm: Thai
+ 36 tuần, đa ối, không có dị tật bẩm sinh. Khi được sinh ra trẻ có nhiều dịch ở
+ miệng và khó thở; trẻ được hồi sức cấp cứu hút đờm dãi làm sạch đường hô hấp.
+ 3h sau trẻ được bón 1 – 2 ml sữa, nhưng lượng sữa còn nguyên trong miệng.
+ Trường hợp trên có thể nghĩ tới dị tật bẩm sinh nào sau đây:
+A) Có điểm thông giữa thực quản với khí quản
+B) Tịt thực quản ở đoạn trên và rò khí thực quản đoạn ở dưới
+C) Tịt thực quản đơn thuần#
+D) Rò khí thực quản ở trên và tịt khí thực quản ở dưới
+Câu 11: Màng rụng rau không có đặc điểm sau:
+A) Có lớp đặc và lớp xốp
+B) Có chứa những tế bào rụng
+C) Có thể Sáp nhập với màng rụng tử cung#
+D) Có hồ máu chứa máu mẹ
+Câu 12: Trong quá trình hình thành tim, hành tim di chuyển xuống dưới  sang
+ phải, tâm thất di chuyển lên trên – sang trái, ống tim nguyên thủy sẽ gấp lại ở vị
+ trí sau:
+A) Rãnh nhĩ thất phải và rãnh nhĩ thất trái
+B) Rãnh nhĩ thất trái và rãnh xoang thất phải
+C) Rãnh liên hành phải và rãnh hành thất trái
+D) Rãnh hành thất trái và rãnh nhĩ thất phải#
+Câu 13: Nguồn gốc hình thành thực quản là:
+A) Đoạn trước ruột nguyên thủy#
+B) Đoạn sau ruột nguyên thủy
+C) Đoạn cuối ruột nguyên thủy
+D) Đoạn giữa ruột nguyên thủy
+Câu 14: Thành phần được hình thành ở tuần thứ 2 và là nguồn gốc tham gia tạo
+thành dây rốn khi phôi khép mình:
+A) Cuống phôi#
+B) Trung mô noãn hoàng
+.C) Trung mô màng ối
+D) Màng rụng
+Câu 15: Dị tật còn ống nhĩ thất là khiếm khuyết trong quá trình sáp nhập của
+thành phần sau:
+A) Gờ bụng và gờ hành#
+B) Gờ thân và gờ hành
+C) Gờ hành và gờ lưng
+D) Gờ bụng và gờ lưng
+Câu 16: Thai phụ Trần Thị H, 33 tuổi, có thai lần đầu khoảng 8 tháng, chưa khám
+thai lần nào, vào trung tâm y tế huyện để khám vì có cảm giác khó thở. Kết quả
+ siêu âm: thai 32 tuần, dây rau 2 vòng quanh cổ, đa ối. Nguyên nhân hiện tượng
+ đa ối trên là:
+A) Nguyên nhân do dây rau
+B) Thai có bất thường gan
+C) Thai bị hẹp thực quản#
+D) Thai có bất thường thận
+Câu 17: Trong quá trình tạo vách liên nhĩ, sự hình thành vách thứ phát có đặc
+điểm sau:
+A) Mọc ra ở thành trước tâm nhĩ
+B) Có một bờ tự do#
+C) Phát triển ra phía sau
+D) Gắn với vách nguyên phát
+Câu 18: Khi dạ dày hoàn thành quá trình xoay theo trục trước  sau sẽ có đặc
+ điểm sau:
+A) Đầu trên di chuyển lên trên
+B) Đầu dưới di chuyển xuống dưới
+C) Đầu dưới lệch sang phải#
+D) Đầu trên hơi lệch sang phải
+Câu 19: Sự trao đổi chất giữa máu mẹ và máu con diễn ra tại cấu trúc sau:
+A) Khoảng gian nhung mao#
+B) Động mạch tử cung rau
+C) Các mao mạch của tử cung
+D) Tĩnh mạch tử cung rau
+Câu 20: Trong trường hợp thai đôi một hợp tử, kết quả của sự phân chia ở giai
+ đoạn phôi nang tạo hai mầm phôi riêng biệt nhưng còn chung khoang nang là:
+A) Hai bánh rau riêng rẽ
+B) Hai thai chung bánh rau
+C) Hai thai chung khoang ối#
+D) Hai dính nhau
+Câu 21: Trẻ sơ sinh trai 1 ngày tuổi, sau 24h không thấy đi phân su. Trẻ được
+ bác sĩ khám thấy trẻ không có lỗ hậu môn, nhưng di tích lỗ hậu môn rõ. Sau khi
+ được siêu âm và chụp phim, bác sĩ kết luận trẻ có dị tật hậu môn không thủng
+lỗ. Nguyên nhân nào dẫn đến dị tật trên:
+A) Màng hậu môn không tiêu đi#
+B) Ngoại bì không lõm hoàn toàn
+C) Vách niệu trực tràng không phân chia  nhớp
+D) Màng nhớp không được phân chia
+Câu 22: Ông tim nguyên thủy được tạo thành là sự sáp nhập của thành phần
+sau:
+A) Hai hành tim
+B) Hai thân động mạch
+C) Hai khoang tim
+D) Hai ống tim nội mô#
+Câu 23: Nhung mao đệm vĩnh viễn không có đặc điểm sau:
+A) Trục liên kết có nhiều mao mạch máu#
+B) Nhúng trực tiếp vào hồ máu
+Câu 24: Trong quá trình hình thành vách ngăn tim, trường hợp vách thứ phát
+kém phát triển sẽ dẫn tới dị tật bẩm sinh:
+A) Còn ống động mạch
+B) Chuyển gốc các mạch máu lớn
+C) Thông liên nhĩ#
+D) Thông liên thất
+Câu 25: Một thai phụ 37 tuổi, khám thai ở tuần thứ 20, kết quả siêu âm phát hiện
+có một khối mô ở đường giữa chứa ruột non và có màng họng. Nguyên nhân của
+hiện tượng trên là:
+A) Phôi khép mình không hoàn toàn vùng bụng
+B) Thoát vị sinh lí các quai ruột
+C) Quai ruột không xoay trở về khoang bụng#
+D) Rò ống noãn hoàng
+Câu 26: Trong quá trình hình thành ruột, sau thoát vị sinh lí, quai ruột nguyên
+thủy trở về khoang bụng, sẽ xoay như sau:
+A) 180 độ theo chiều kim đồng hồ#
+B) 45 độ ngược chiều kim đồng hồ
+C) 45 độ theo chiều kim đồng hồ
+D) 90 độ theo chiều kim đồng hồ
+E) 90 độ ngược chiều kim đồng hồ
+Câu 27: Phần bên phải của nụ tụy bụng di chuyển theo lộ trình bình thường,
+phần bên trái di chuyển bất thường theo chiều ngược lại trước khi sáp nhập với
+nụ tụy lưng, kết quả gây dị tật bẩm sinh sau:
+A) Tật nhân đôi tuyến tụy
+B) Tật mô tụy phụ
+C) Tật hai ống tụy
+D) Tật tụy vòng#
+Câu 28: Thai phụ Nguyễn Thị C, 37 tuổi, thai khoảng 7 tháng, đến khám thai
+tại bệnh viện. Kết quả siêu âm phát hiện: Thai 30 tuần tuổi, phát triển kém, có
+.dị tật còn thân động mạch. Dị tật trên do nguyên nhân sau:
+A) Lỗ liên thất phần màng không đóng hoàn toàn
+B) Gờ thân và gờ hành khi sáp nhập không xoắn góc 225 độ
+C) Sự sáp nhập vách liên thất và thân – nón động mạch không hoàn toàn#
+D) Cặp gỡ hành đoạn dưới không sáp nhập hoàn toàn
+Câu 29: Trong quá trình hình thành, dạ dày sẽ xoay như nào:
+A) 45 độ ngược chiều kim đồng hồ
+B) 90 độ theo chiều kim đồng hồ#
+C) 90 độ ngược chiều kim đồng hồ
+D) 45 độ theo chiều kim đồng hồ
+Câu 30: Rãnh thanh – khí quản xuất hiện ở vị trí sau:
+A) Phía sau thực quản
+B) Phía bụng của đoạn sau ruột trước#
+C) Đoạn ruột giữa
+D) Phía trên nắp thanh quản
+Câu 1: Quá trình tạo tinh trùng diễn ra liên tục từ:
+A. Từ lúc dậy thì đến khi chết#
+B. Từ khi sinh ra đến khi chết đi
+C. Từ khi còn trong bào thai đến lúc dậy thì
+D. Từ trong bào thai đến khi chết đ
+Câu 2: Đâu không phải là yếu tố giúp noãn di chuyển về phía buồng tử cung
+A. Nhờ luồng dịch từ buồng trúng vào buồng tử cung
+B. Sự co bóp của lớp cơ trơn thành vòi trúng
+C. Nhờ lớp tế bào nang bên ngoài#
+D. Được các cơ vòi tóm bắt trên bề mặt buồng trứng
+Câu 3: Quá trình thụ tinh xảy ra bởi mấy giai đoạn
+A. 2
+B. 3
+C. 4#
+D. 5
+Câu 4: Đặc điểm nào sau đây không phải là của noãn khi rụng trứng
+A. Mang bộ NST n kép
+B. Đang ở giai đoạn noãn bảo l
+C. Được bao bọc bởi lớp tế bào nang
+D. Có màng trong suốt bao quanh
+E. Có khả năng thụ tinh#
+Cậu 5: Bình thường tinh trùng không có đặc điểm nào sau đây:
+.A. Có khoảng $80-120tr/ml$ tinh trùng
+B. Không chứa tinh trùng dị dạng
+C. Chứa tinh trùng không di chuyển được#
+D. Bị ức chế bởi glycerphotphosclolin
+Câu 6: Trong cơ quan sinh dục nữ tinh trùng có thể sống được ;
+A.12-48h
+B. 24-72h
+C 48-72h#
+D 56-72h
+Câu 7; Noãn có thể sống được bao lâu trong đường sinh dục nữ
+A. 12h
+B. 48h
+C. 24h#
+D. 72h
+Câu 8: Tinh trùng di chuyển trong đường sinh dục nữ nhờ:
+A. Sự co bóp của tầng cơ đường sinh dục#
+B. Sự chuyển động các lông chuyển biểu mô đường sinh dục
+C. Sự cuốn theo nước màng bụng
+D. Sự hỗ trợ các chất tiết đường sinh dục
+Câu 9: Phản ứng vỏ không có đặc điểm;
+A. Xảy ra khi tinh trùng gắn vào màng bảo tương của noãn#
+B. Xuất hiện lớp hạt vỏ ở vùng bào tương ngay dưới màng noãn
+C. Các hạt vỏ có dạng lysosom
+D. Men được giải phóng ở khoảng quanh nõan hoàng
+Câu 10: Đâu không phải là ý nghĩa của sự thụ tinh:
+A. Khôi phục NST 2n
+B. Xác định giới tính
+C. Hợp tử đầu tiên nhận trung tử từ tinh trùng cung cấp còn ty thể do noãn cung
+D. Từ khả năng biệt hóa thấp chuyển thành có khả năng biệt hóa cao#
+Câu 11: Đâu là đặc điểm của sự phân chia trúng thụ tinh:
+A. Không phân chia hoàn toàn
+B. Xảy ra ngắt quãng, kì nghỉ ngắn
+C. Quá trình phân chia số lượng tế bảo tăng nhanh nhưng khối lượng trúng
+không thay đổi#
+D. Phân chia không đều nhưng đồng thời
+Câu 12: sau giai đoạn 2 tế bào hợp tử phân chia bao nhiêu lần
+A. 2
+B. Nhiều#
+C. Không phân chia
+D. 4
+Câu 13: Tại lần phân chia thứ hai phôi bào lớn phân chia tạo ra bao nhiêu phôi
+bào:
+A. 2
+B. 3#
+.C. 4
+D. 5
+Câu 14: kết thúc phôi dâu phần bị tiêu biến đi là
+A. Cực cầu
+B. Màng trong suốt
+C. Cực cầu và màng trong suốt#
+D. Tế bào nang và màng trong suốt
+Câu 15; quá trình thụ tinh không bao gồm giai đoạn nào:
+A. Phản ứng thể cực đầu#
+B. Xâm nhập
+C. Hòa nhập
+D. Tạo khả năng
+Câu 16: Phôi dâu bắt đầu từ ngày bao nhiêu sau thụ tinh:
+A. Ngày 4
+B. Ngày 5
+C. Ngày 6
+D. Ngày 3#
+Câu 17: Đặc điểm không có ở phôi dâu:
+A. Xuất hiện khoảng ngày thứ 3 sau thụ tinh
+B. Có 12-16 phôi bào
+C. Đang được vận chuyển trong vòi trứng#
+D. Có 2 cực: cực phôi và cực đối phôi
+Câu 18: Nguồn gốc của dịch phôi nang:
+A. Từ máu mẹ mac
+B. Do niềm tử cung#
+C. Các tiểu phôi bào tiết ra
+D. Các đại phôi bào tiết chế
+Câu 19: Phôi nang không có đặc điểm nào:
+A. Có 30-32 phôi bào
+B. Đang được vận chuyển trong vòi trứng#
+C. Trong phôi xuất hiện khoang chứa dịch
+D. Cực phôi biệt hóa thành 2 lớp: Lá nuôi tế bào và lá nuôi hợp bào
+Câu 20: Sự thụ tinh không bị ảnh hưởng bởi yếu tố nào
+A. Dinh dưỡng người mẹ#
+B. Yếu tố thời gian
+C. Chất lượng tinh trùng
+D. Số lượng tinh trùng
+Cậu 21: Các tế bào ngoài của phôi dâu sau này sẽ hình thành nên:
+A. Phôi
+B. Rau và các bộ phận phụ#
+C. Dây rốn
+D. Noãn hoàng
+Câu 22: Sự phân cắt phôi không mang đặc điểm:
+.A. Nối tiếp nhau liên tục hầu như không có giann ki
+B. Phôi bào sinh ra có kích thước nhỏ hơn phôi bào sinh ra nó
+C. Quá trình tổng hợp nhân và bào tương tích cực#
+D. Xảy ra quá trình vận chuyển của trúng trong vòi trứng
+Câu 24: Màng ối có nguồn gốc từ:
+A. Nguyên bào phôi#
+B. Hạ bì phôi
+C. Ngoại bì phôi
+D. Trung bì ngoài phôi
+Câu 25: Lá nuôi được phát triển từ đâu
+A. Tiểu Phôi bào#
+B. Đại phôi bào
+C. Trung bì ngoài phôi
+D. Nguyên bảo phổi
+Câu 26: Phôi bắt đầu làm tổ ở tử cung vào ngày bao nhiêu
+A. Ngày 5
+B. Ngày 6#
+C. Ngày 7
+D. Ngày 8
+Câu 29: Đâu là vị trí làm tổ bình thường của phôi tại tử cung
+A. Tại vòi tử cung
+B. 1/3 dưới của khoang tử cung
+C. Trong lỗ trong tử cung
+D. 1/3 trên của khoang tử cung#
+Câu 30: Phổi làm tổ được là nhờ
+A. Lá nuôi hợp bào#
+B. Lá nuôi tế bào
+C. Nguyên bào nuôi
+D. Thượng bì phôi
+Câu 31:khoang ối và thượng bì phôi, hạ bì phôi được hình thành từ ngày thứ
+mấy sau thụ tinh:
+A. 6
+B. 9
+C. 8#
+D. 7
+Câu 32: đặc điểm không có ở nước ối;
+A. Khối lượng nước ối tăng dần
+B. Sản sinh và hấp thụ nước ối là quá trình không đổi
+C. Do các tế bào lá nuôi chế tiết#
+D. Lượng nước ối được trao đổi với cơ thể mẹ qua tuần hoàn rau
+Câu 33: Phôi thường làm tổ ở giai đoạn
+.A. Phôi dâu
+B. Phôi nang#
+C. Phôi vị
+D. Phôi thần kinh
+Câu 34:Giai đoạn phôi vị được bắt đầu từ:
+A. Phôi vừa làm tổ xong
+B. Hình thành rãnh nguyên thủy
+C. Trung bì trong phôi hình thành#
+D. Hạ bì trở thành nội bì
+Câu 35:màng Túi noãn hoàng nguyên phát được biệt hóa từ:
+A. Hạ bì phôi#
+B. Thượng bì phôi
+C. Trung bì ngoài phôi
+D. Lá nuôi hợp bào
+Câu 36: Trần của túi noãn hoành là:
+A. Hạ bì phôi#
+B. Thượng bì phôi
+C. Lá nuôi hợp bào
+D. Lá nuôi tế bào
+Câu 37: Túi noãn hoành thứ phát được hình thành từ ngày bao nhiêu sau thụ
+tinh
+A. 9
+B. 13#
+C. 6
+D. 14
+Câu 38:Màng ối và khoang ối không thực hiện chức năng:
+A. Che chở cho tahi chống những tác động cơ học từ bên ngoài
+B. Hạn chế dị tật cho thai#
+C. Làm cho thai không dính vào màng
+D. Cho phép thai cử động tự do
+Câu 39: Trung mô ngoài phôi được hình thành khi nào
+A. Ngày 11-12 sau thụ tinh#
+B. Ngày 10-11 sau thụ tinh
+C. Ngày 12-13 sau thị tỉnh
+D. 14-15 sau thụ tinh
+Câu 40: Túi noãn hoành của động vật có vú không có đặc điểm chức năng
+A. Phát sinh từ nội bì#
+B. Được bọc ngoài bằng trung bì lá tạng
+C. Được tạo ra hai lần
+D. Nuôi dưỡng phôi
+Câu 41: Ngoại bì phôi là lớp tế bào nằm ở :
+A. Đáy túi ối
+B. Đáy noãn hoàng#
+C. Vòm mái túi ối
+.D. Phần bên túi noãn hoàng
+Câu 42; Sự khép mình của phôi không do quá trình nào:
+A. Sinh sản nhanh của các tế bào phổi#
+B. Phát triển túi noãn hoành
+C. Sự uốn cong của mép bản phôi
+D. Sự phát triển của khoang ối
+Câu 43: Nguồn gốc của niệu nang là:
+A. Nội bì phôi
+B. Nội bì túi noãn hoành#
+C. Niệu đạo man
+D. Võng mạc mắt
+Câu 44: nguồn gốc của trung bì phôi:
+A. Đường nguyên thủy#
+B. Nút hánen
+C. Dây sống
+D. ống thần kinh- ruột
+Câu 45: Cấu trúc không được tạo ra ở tuần thứ 3 là:
+A. cuống bụng#
+B. niệu nang
+C. ống thần kinh- ruột
+D. Dây sống
+Câu 46: Đặc điểm không xảy ra ở tuần thứ 2:
+A. Phôi được vận chuyển trong vòi trứng
+B. Ngoại bì và nội bì được tạo ra
+C. Tạo phôi vị#
+D. Tạo ngoại bì
+Câu 47:Sự tạo mầm phôi và các cơ quan xảy ra nhờ:
+A. Sự tách ra của các tế bào
+B. Sự tăng sinh và di chuyển lồi lên lõm xuống của tế bào
+C. Sự di chuyển tăng sinh, lồi lên lõm xuống tách ra hay gộp vào của các tế bào
+D. Sự di chuyển tăng sinh, tách ra, lồi lên lõm xuống của các tế bào#
+Câu 48:Giai đoạn dễ gây bất thường nhất trong quá trình phát triển của phôi
+thai là:
+A. Phôi dâu
+B. Phổi nang
+C. Phôi vị#
+D. Phôi thần kinh
+Câu 49: Đâu là bộ phận được tạo hoàn toàn từ nội bì:
+A. Hệ thống thần kinh
+B. Cơ quan tiêu hóa#
+C. Cơ quan hô hấp
+D. Biểu mô tai giữa
+. Câu 50 : bộ phận nào không được cấu tạo từ nguyên nội bì
+A. Biều mô tai giữa
+B. Biểu mô đường hô hấp (từ họng tới phế nang)#
+C. Tuyến nước bọt
+D. Biểu mô bàng quang
+Câu 51: Trung bì không phải nguồn gốc của:
+A. Mô liên kết
+B. Mô cơ
+C. Cơ quan tạo huyết và huyết cầu
+D. Men răng#
+Câu 52:Ở tuần lễ thứ 2 sự xuất hiện của cấu trúc nào có vai trò quan trọng trong
+sựu phát triển của phôi:
+A. Đĩa phôi hai lá#
+B. Đường nguyên thủy
+C. nút nguyên thủy
+D. Khoang ối
+Câu 53:Các tế bào nào ban đầu của phôi sẽ phát triển thành phối thai:
+A. Thượng bì phôi
+B. Mầm phôi#
+C. Hạ bì phôi
+D. Thượng bi phối và hạ bì phôi
+Câu 55:Lớp tế bào bao ngoài phôi nang được gọi là lớp:
+A. Nguyên bào nuôi#
+B. Hợp bào nuôi
+C. Nguyên bào phổi
+D. Nguyên bào nang
+Câu 56:tế bào tạo ra ba lá phôi có nguồn gốc từ:
+A. Thượng bì#
+B. trung bì
+C. ha bi
+D. Lá nuôi tế bào
+Câu 57: Trung bì phôi do các tế bào nòa tạo thành:
+A. Thượng bì#
+B. Ha bi
+C. Mầm phôi
+D. Nội bì chính thức
+Câu 58: khi làm tổ đám tế bào mầm phôi có cấu trúc:
+A. 2 lá phôi phẳng#
+B. 3 lá phôi thẳng
+C. Ba lá phôi hình ống
+D. Chưa phân thành các lá phôi
+Câu 59: Tuyến yên có nguồn gốc từ đâu
+A. Ngoại bì
+.B. Ngoại bì thần kinh và Trung bì cận trục
+C. Trung bì cận trục và ngoại bì da
+D. Ngoại bì da, ngoại bi thần kinhh và trung bì cận trục#
+Câu 60: Các nang trúng ở trạng thái diplotene sẽ:
+A. Là trạng thái bảo vệ nang trúng tốt nhất
+B. Có thể tồn tại 40 năm mới đi vào chín
+C. Có nhiều nguy cơ tổn thương nếu tồn tại lâu
+D. Tất cả đều đúng#
+Câu 61: Tế bào mầm nguyên thủy di cư lạc chỗ sẽ dẫn tới hậu quả gì:
+A. Tạo u quái#
+B. Tạo u dịch nhày
+C. Tạo u ác tính
+D. Tạo polype
+Câu 62:Gai nhau thai không có thành phần nào;
+A. Mạch máu gai nhau
+B. Lớp nguyên tế bào#
+C. Lá hợp bào nuôi
+D. Máu từ động mạch của tuần hoàn mẹ
+Câu 63: Tế bào mầm nguyên thủy xuất phát từ đâu trong phôi:
+A. Nội bì
+B. Ngoại bì
+C. Trung bì
+D. Cả 3 lá phổi#
+Câu 64: Phôi hai lá được đặc trưng bởi cấu trúc gì:
+A. Ngoại bì và trung bì
+B. Trung bì và nội bì#
+C. Ngoại bì và thượng bì
+D. Thượng bì và ngoại bì
+Câu 65: Thứ tự nào sau đây đúng trong quá trình hình thành giao tử;
+A. Tế bào mầm di cư nguyên phân – giảm phân#
+B. Giảm phân – Nguyên phân – tế bào mầm di cư
+C. Giảm phân – tế bảo mầm di cư - giảm phân
+D. Giảm phân  tế bào mầm di cư nguyên phân
+Câu 66:Bì của chi và thành cơ thể có nguồn gốc:
+A. Trung bì tấm bên
+B. Trung bì cận trục#
+C. Trung bì trung gian
+D. Ngoại bì
+Câu 67: Dây sống có vai trì gì:
+A. Chống đỡ phôi
+B. Tham gia biệt hóa tế bào
+C. Tạo thành một số cơ quan như ngoại bì thần kinh, hệ thần kinh trung ương.......
+D. Tất cả đều đúng#
+.Câu 68: Nguồn gốc của nhau thai bắt đầu từ đâu:
+A. Dưỡng bào, nội mạc tử cung
+B. Trung bì ngoài phôi#
+C. Nội mạc tử cung
+D. Dưỡng bào và trung bì ngoài phối
+Câu 69:trong các dị tật bẩm sinh dị tật nào phổ biến nhất
+A. Down
+B. Bất thường ở tim
+C. Hở môi
+D. Tất cả đều đúng#
+Câu 70:Lá nuôi của phôi là cấu trúc:
+A. Tạo hàng rào nhau thai
+B. Từ tế bào máu nguyên thủy
+C. Tạo nên từ màng rụng
+D. Từ một phần cuống phôi
+E. Từ ngày thứ 9 sau thụ tinh#
+Cấu 71:Gai rau thứ cấp được cấu tạo bởi:
+A. Lá nuôi hợp bào, lá nuôi tế bào và trung bì ngoài phối#
+B. Lá nuôi tế bào và trung bì ngoài phôi
+C. Lá nuôi tế bào, trung bì ngòa phôi và một ít mạch máu
+D. Lá nuôi tế bào, trung bì ngoài phôi và màng rụng đáy
+E. Tất cả đều sai
+Câu 72:nhau có cấu tạo gồm:
+A. Màng đệm gai rau và màng rụng thành
+B. Màng đệm gai rau và màng rụng bao
+C. Màng đệm gai rau và màng rụng đáy#
+D. Màng đệm trơn và màng rụng đáy thành
+E. Màng đệm trơn và màng rụng
+Câu 73:hầu hết cơ quan nội tạng được hình thành từ tháng thứ mấy của thai kì:
+A. 1
+B. 2#
+C. 4
+D. 6
+Câu 74: Đặc điểm của cuống phôi:
+A. Góp phần tạo dây rốn
+B. Chúa niệu nang
+C. Có nguồn gốc từ trung bì ngoài phối
+D. Tất cả đều đúng#
+Câu 75: Đặc điểm không thuộc nhung mao đệm nguyên phát :
+A. Trục nhung mao xuất hiện nhiều mạch máu#
+B. Bọc kín mặt ngoài phôi
+C. Màng đệm tạo thành trục nhung mao
+D. Phủ ngoài trục nhung mao là lá nuôi
+Câu 76: Đặc điểm nhung mao đệm thứ phát:
+.A. Có mặt từ tuần thứ 3cuar quá trình phát triển phôi
+B. Bọc kín mặt ngoài của phôi
+C. Trung mô màng đệm tạo thành trục nhung mao#
+D. Phủ ngoài trục nhung mao là lá nuôi hợp bào
+Câu 80: Trong thời gian có thai nội mạc thân tử cung gọi là:
+A. Màng rụng#
+B. Màng rụng tử cung
+C. Màng rụng rau
+D. Tất cả đều đúng
+Câu 81: những biến đổi của màng rụng tử cung:
+A. Lớp trên biến đổi tạo ra lớp đặc
+B. Lớp sâu tạo thành lớp xốp
+C. Các tế bào liên kết của lớp đệm biến thành tế bào rụng
+D. Tất cả các biến đổi trên#
+Câu 82:màng rụng rau không có đặc điểm và chức năng nào sau đây
+A. Góp phần tạo ra rau
+B. Tạo lớp đặc và xốp
+C. Mỏng hơn màng rụng trứng#
+D. Lớp đặc bị phá hủy tạo ra các khoảng gian nhung mao
+Câu 83: Vị trí bám của bánh rau:
+A. Đáy tử cung
+B. Cổ tử cung
+C. Mặt trước hoặc mặt sau của thân tử cung
+D. Tất cả vị trí trên#
+Câu 84: Bánh rau không có đặc điểm nào:
+A. Mặt trông vào khoang ối được bọc bởi màng ối
+B. Do hai phần tạo thành: rau mẹ và rau thai
+C. Có hình đĩa đường kính khoảng20cm
+D. Phần rau mẹ có nguồn gốc từ màng rụng trứng#
+Câu 85:từ tháng thứ 4, hàng rào rau không có lớp cấu tạo:
+A. Lá nuôi hợp bào
+B. Lá nuôi tế bào#
+C. Nội mô mao mạch đệm
+D. Mô liên kết của trục nhung mao đệm
+Câu 86: Rau thai không có chức năng nào sau đây;
+A. Trao đổi chất
+B. Nội tiết
+C. Bảo vệ
+D. Điều hòa thân nhiệt và giữ nhiệt độ cho thai#
+Câu 87:nguồn gốc của dây rốn:
+A. Cuống bụng
+B. Cuống noãn hoàng
+C. Cuống bụng và cuống noãn hoàng#
+D. Cuống bụng và niệu nang
+Câu 88:sự kiện chính xảy ra ở đầu tuần thứ 3 của quá trình phát triển của phôi:
+A. Xuất hiện đường nguyên thủy#
+B. Xuất hiện túi noãn hoàng thứ phát
+C. Trung ì màng đệm
+D. Mầm các cơ quan
+Cầu 89: thành phần không tham gia cấu trúc của màng đệm
+A. Lá nuôi tế bào
+B. Lá nuôi hợp bào
+C. Trung bì màng ối#
+Câu 90:vị trí không có trung bì phôi ở đầu đĩa:
+A. Màng họng#
+B. Màng nhớp
+C. Túi noãn hoàng
+D. Niệu nang
+Câu 91: hệ cơ quan nào hoạt động sớm nhất trong cơ thể :
+A. Hệ tiêu hóa
+B. Hệ tuần hoàn#
+C. Hệ hô hấp
+D. Hệ tiết niệu sinh dục
+Câu 91: Tim bắt đầu đập từ khoảng ngày thứ bao nhiêu sau thụ tinh
+Α. 21-22
+Β. 22-23#
+C. 23-24
+D. 24-25
+Câu 92: hệ tuần hoàn được hình thành tử:
+A, Trung mô#
+B. Ngoại bì
+C. Nội bì
+D. Ngoại bì thần kinh
+Câu 93: Tìm có nguồn gốc từ :
+A. Trung bì#
+B. Nội bì
+C. Ngoại bì
+D. Mầm phôi
+Câu 94; Quá trình phát triển của ống tim nguyên thủy đi kèm bao nhiêu hiện
+tượng:
+A. 1
+.Β. 2
+C. 3#
+D. 4
+Câu 95: Quá trình phát triển của ống tim nguyên thủy không bao gồm hiện tượng
+nào sau đây:
+A. Sự dài ra và gấp khúc của ống tim nguyên thủy
+B. Sự bành trướng không đều của các đoạn ống tim
+C. Sự co bóp của các cơ thành tim#
+D. Sự tạo vách ngăn
+Câu 96: Khi tim gấp đoạn hành tim và tâm thất nguyên thủy di chuyển :
+A. Phía lưng phôi và xuống dưới
+B. Phía bụng phôi và lên trên
+C. Phía bụng phôi và xuống dưới#
+D. Phía lưng phôi và lên trên
+Câu 96: Khi tim gấp đoạn tâm nhĩ và đoạn xoang tĩnh mạch di chuyển:
+A. Phía lưng phôi và xuống dưới
+B. Phía bụng phôi và lên trên
+C. Phía bụng phôi và xuống dưới
+D. Phía lưng phôi và lên trên#
+Câu 97: Đấu không phải là sự phát triển của ống tim nguyên thủy:
+A. Hệ tim mạch là hệ có hoạt động chức năng sớm nhất
+B. Bắt đầu từ tuần lễ thứ 2#
+C. Khởi đầu từ các tế bào tạo tím di chuyển qua đường nguyên thủy về phía
+đầu
+D. Bao gồm các dây tế bào tạo nên ống tạo tim
+Câu 98: Sự phân chia thành 4 buồng tim ở người diễn ra vào khoảng
+A. Tuần thứ 4-7#
+B. Tuần thứ 8-10
+C. Tuần thứ 10-12
+D. Tuần 12-14
+Câu 99: Sự hình thành lỗ bầu dục ở vách gian nhĩ xuất phát từ:
+A. Vách gian nhĩ nguyên phát#
+B. Lỗ liên nhĩ nguyên phát
+C. Lỗ liên nhĩ thứ phát
+D. Vách gian nhĩ thứ phát
+Câu 100: Sự bít lại của lỗ liên thất trong quá trình tạo tim là do sự phát triển của
+A. Vách gian thất cơ
+B. Vách gian thất màng
+C. Gờ nội tâm mạc
+D. Tất cả đều sai#
+Câu 101: Sự tạo xoang vành ở tim xuất phát từ:
+A. Sùng trái xoang tĩnh mạch teo đi#
+.B. Sùng phải xoang tĩnh mạch to lên
+C. Rãnh tận
+D. Mào tận
+Câu 102: Thành phần nào sau đây không góp phần tạo tam nhĩ phải chính thức
+A. Sùng trái xoang tĩnh mạch
+B. sùng phải xoang tĩnh mạch#
+C. Tam nhĩ phải nguyên thủy
+D. Rãnh tận
+Câu 103:Máu giàu oxi được mang từ bánh rau đến cơ thể phôi qua:
+A. Tĩnh mạch rồn
+B. Tĩnh mạch chính của phổi
+C. Tĩnh mạch túi noãn hoàng
+D. Cả 3#
+Câu 104: Về sau hành tim phát triển thành:
+A. Tâm thất trái
+B. Tâm thất phải#
+C. Tâm nhĩ trái
+D. Tâm nhĩ phải
+Câu 105: Quá trình ngăn buồng nhĩ gồm bao nhiêu giai đoạn
+A. 1
+B. 2#
+C. 3
+D. 5
+Câu 106:cơ tim tương đương với thành phần nào của thành động mạch
+A. Áo trong
+B. Lớp dưới nội mô
+C. Áo giữa#
+D. Áo ngoài
+Câu 107: Thông liên nhĩ gồm:
+A. Vách nguyên phát tạo lỗ thứ phát lớn
+B. Còn lỗ nguyên phát
+C. Vách thứ phát kém phát triển
+D. Tất cả đều đúng#
+Câu 108: Quá trình ngăn buồng tim nào tạo ra đầu tiên
+A. Tạo vách ngăn ống nhĩ thất
+B. Tạo vách nguyên phát#
+C. Tạo vách liên thất cơ
+D. Tạo vách liên thất màng
+Câu 109: Vị trí làm tổ bất thường nào hay gặp nhất:
+A. Buồng trứng
+B. Vòi trứng#
+C. Cổ tử cung
+D. Mạc treo ruột non
+Câu 110: Tuần hoàn sau sinh:
+.A. Máu lên phổi dễ dàng nhờ động tác cắt dây rốn#
+B. Máu không thể đổ từ nhĩ phải sang nhĩ trái do do vách nguyên phát bịt lại
+C. Máu từ động mạch chủ luôn qua động mạch phổi nhờ ống động mạch
+D. Máu từ tĩnh mạch chủ dưới đổ về làm áp lực nhĩ phaiir cao hơn nhĩ trái
+Câu 111: Ông tim nguyên thủy trải qua các quá trình sau ngoại trừ:
+A. Tạo van tim#
+B. Phát triển dài ra và gấp khúc
+C. Phát triển không đồng đều
+D. Tạo vách ngăn buồng tim
+Câu 112; Hành động mạch được nhân làm hai ngoại trừ:
+A. Động mạch chủ, động mạch phổi
+B. Vách ngăn xoắn giữa hai động mạch
+C. Động mạch chủ ở bên phải động mạch phổi ở bên trái#
+D. Động mạch chủ bên trái động mạch phổi bên phải
+Câu 113: Vách nguyên phát là:
+A. Vách liên nhĩ#
+B. Vách liên thất cơ
+C. Vách liên thất màng
+D. Vách ngăn ống nhĩ thất
+Câu 114: ống tim nguyên thủy không được hình thành do;
+A. Do phôi khép mình
+B. Do sự thu nhỏ của ống noãn hoàng#
+C. Do sự sáp nhập của hai ống tim nội mô
+D. Phía đầu phôi gập 180 độ
+Câu 115: Động mạch xoắn cung cấp máu để nuôi thai từ đâu:
+A. Me
+B. Khoảng gian gai nhau#
+C. Đĩa đệm
+D. Bao dưỡng bào bên ngoài
+Câu 116: Tam chứng fallot là:
+A. Hẹp thân chung các động mạch phổi, thông liên nhĩ, phì đại tâm thất phải#
+B. Hẹp thân chung động mạch chủ, thông liên thất, phì đại tâm thất phải
+C. Hẹp thân chung động mạch phổi, thông liên thất, phì đại tâm thất trái
+D. Hẹp thân chung động mạch chủ, thông liên nhĩ, phì đại tâm thất phải
+Câu 117:Van tim được tạo nên từ:
+A. Lớp cơ tim#
+B. Tế bào cơ dẫn truyền
+C. Lớp ngoại tâm mạc
+D. Lớp màng trong tim
+E. Lá thành màng ngoài tim
+Câu 118:mao mạch máu nằm ở:
+A. Đường tuần hoàn bạch huyết
+.B. Vòng tuần hoàn lớn
+C. Nối giữa tiểu động mạch và tiểu tĩnh mạch#
+D. Vòng tuần hoàn nhỏ
+E. Hệ vi tuần hoàn
+Câu 119: Ruột trước là một ống:
+A. Kín với đầu trên là màng nhớp
+B. Hở, đầu trên thông với khoang miệng
+C. Kín đầu trên là màng họng#
+D. Hở, đầu trên thông với họng
+Câu 120: Ruột trước phát triển thành:
+A. Gan và tụy#
+B. Đại tràng lên
+C. Đại tràng xuống
+D. Trực tràng
+Câu 121: Ruột trước không hình thành nên:
+A. Dạ dày
+B. Túi mật và ống mật
+C. Trực tràng#
+D. Thực quản( vùng ngực và vùng bụng)
+Câu 122: Ruột sau không hình thành nên:
+A. Đại tràng sau
+B. Đại tràng xuống
+C. Trực tràng
+D. Đại tràng lên#
+Câu 123: Nhú dạ dày xuất hiện từ tuần thứ bao nhiêu sau thụ tinh
+A. 2
+B. 3
+C. 4#
+D. 5
+Câu 124:Sau khi dạ dày thực hiện quá trình xoay theo hai trục thì:
+A. Bờ cong lớn từ phía sau xoay sang trái và lệch xuống#
+cong nhỏ quay sang bên phải và lệch xuống
+C. Bờ cong lớn từ phía sau quay sang phải và lệch xuống
+D. Bờ cong lớn từ phía sau quay sang phải và hướng lên trên
+Câu 125: Khi dạ dày xoay theo trục đầu – đuôi thì mầm gan và hai dây thần kinh
+lang thang sẽ lần lượt xuay như thế nào:
+A. Gan sang phải, hai dây thần kinh lần lượt ở mặt trước và mặt sau#
+B. Gan sang trái, hai dây thần kinh không đổi
+.C. Gan sang phải, hai dây thần kinh không đổi
+D. Gan sang trái, hai dây thần kinh lần lượt ở mặt trước và mặt sau
+Câu 126: Khi dạ dày xoay theo trục trước sau thì tá tràng:
+A. Lệch trái và hình thành chữ C
+B. Lệch phải và hình thành chữ C
+C. Lệch trái và tạo nên hình chữ U
+D. Lệch phải và tạo hình chữ U#
+Câu 127: Phần mô liên kết trong gan có nguồn gốc từ:
+A. Trung bì#
+B. Nội bì
+C. Ngoại bì
+D. Ngoại bì da
+Câu 128:Nội bì thành trước của tá tràng dày lên sẽ không tạo ra:
+A. Mầm gan
+B. Túi mật
+C. ống mật chủ
+D. nụ tụy bụng
+E. tất cả đều sai#
+câu 129: Tụy được hình thành từ:
+A. nụ tụy bụng
+B. nụ tụy lung
+C. nụ tụy bụng và nụ tụy lưng#
+D. mầm gan
+Câu 130: Nụ tụy bụng nằm ở:
+A. mặt sau tá tràng
+B. mặt trước tá tràng
+C. dưới túi mật#
+D. trên túi mật
+Câu 131: Tụy chính thức được hình thành vào tuần thứ mấy sau thụ tinh:
+A.4
+B. 5#
+C.6
+D.7
+Câu 132: Khi nào thì tụy chính thức được hình thành:
+A. Nụ tụy bụng và nụ tụy lưng hòa nhập với nhau#
+B. Dây tế bào gan tiến vào vách ngăn
+C. Khi mầm tụy xuất hiện
+D. Khi mầm tụy bụng và ống mật chủ mở vào tá tràng
+Câu 133: Tuần thứ bao nhiêu thì ruột nằm đúng vị trí giải phẫu học
+A. 8
+B. 9
+C. 10#
+D. 11
+Câu 133: Hiện tượng nào đánh dấu ruột nằm đúng vị trí giải phẫu học
+A. Ruột đi vào dây dốn
+B. Sự xuất hiện quai ruột giữa hình chữ U
+C. Quai ruột quay tổng cộng 270 độ rồi quay về  bụng#
+D. Quai ruột xoay 90 độ
+Câu 134: Tá tràng được tạo bởi
+A. Cuối Ruột trước
+B. Đầu Ruột sau
+C. Đầu Ruột giữa
+D. Cuối ruột trước và đầu ruột giữa#
+Câu 135: Trong quá trình phát triển ruột không trải qua quá trình nào
+A. Tạo ra quai nguyên thủy
+B. Thoát vị sinh lí của quai nguyên thủy
+C. Hình thành nên hồi  kết tràng#
+D. Chuyển động xoay của quai ruột nguyên thủy
+Câu 136: Rò trực tràng không phải do:
+A. Trực tràng mở tại xoang niệu dục
+B. Trực tràng mở tại bàng quang#
+C. Trực tràng mở không đúng vị trí
+D. Trực tràng bị xoang niệu dục che mất
+Câu 137:sự phát triển của hệ niệu dục xuất phát từ
+A. Trung bì cận trục
+B. Trung bì bên
+C. Trung bì trung gian#
+D. Nội bì
+Câu 138: Trong quá trình phát triển của hậu thận nụ niệu quản không tạo nên
+thành phần nào
+A. ống góp
+B. niệu quản
+C. Nephron#
+D. Đài thận lớn và bé
+Câu 139: Mũ mô hậu thận sẽ phát triển thành:
+A. ống góp
+B. niệu quản
+C. nephron#
+D. đài thận
+Câu 140: Bao Bowman phát triển từ cấu trúc phôi bào nào sau đây;
+A. Tiền thận
+B. ống trung thận
+C. Nụ niệu quản
+D. Mầm sinh hậu thận#
+Câu 141:Ở nữ ống cận trung thận sẽ phát triển thành:
+A. Dây chằng buồng trứng
+B. Dây chẳng tròn tử cung
+C. Tử cung#
+D. Ông góp của thận
+Câu 142:Biểu mô khoang cơ thể của mào sinh dục nữ phát triển thành:
+A. Các tế bảo nang#
+B. Noãn bào
+C. Tế bào vỏ trong nang trứng
+D. Màng trắng
+Câu 143:sự tạo bàng quang bắt nguồn từ:
+A. Niệu nang
+B. Phần trên của xoang niệu dục#
+C. Phần giữa của xoang niệu dục
+D. ống cận trung thận
+Câu 144; thành phần nào sau đây ảnh hưởng đến sự biệt hóa của đường sinh
+dục
+và bộ phận sinh dục ngoài ở nam?
+A. Androgen
+B. Éstrogens
+C. Progesterone
+D. Cortisol#
+Câu 145: Thận chính thức phát triển từ:
+A. Ông ruột
+B. Nụ niệu quản và mầm sinh hậu thận#
+C. Niệu nang và xoang niệu dục
+D. Tiền thận
+Câu 146: Ông trung thận ở nam sẽ phát triển thành
+A. Niệu đạo dương vật
+B. ống ra
+C. mào tinh#
+D. Niệu đạo tiền liệt
+Câu 147: Sự phát triển của hệ niệu dục thường bắt đầu từ tuần thứ mấy sau thụ
+tinh:
+A. 2
+B. 4#
+C. 6
+D. 8
+Câu 148: Các tế bảo mầm ở tuyến sinh dục có nguồn gốc từ:
+A. Biểu mô khoang cơ thể#
+B. Mào sinh dục
+C. Thành túi noãn hoàng
+D. Trung thận
+Câu 149: Tế bào sertoli phát triển từ
+A. Các tế bào mầm
+B. Các tế bào biểu mô#
+C. Trung mô của mào tinh xem giữa các dây tủy
+D. Trung thận
+Câu 150: Ý nào dưới đây không đúng khi nói về ống Muller
+A. Góp phần tạo nên đường sinh dục bên ngoài của nữ
+B. Phát triển từ ống trung thận#
+C. Còn gọi là ống cận trung thận
+D. ở nam, ống Muller sẽ thoái hóa
+Câu 151: Bộ phận được hình thành một phần nhờ vào nếp gấp Rathke là?
+A. Ruột trướC
+B. Ruột giữa
+C. Ruột sau#
+D. Cả 3 đoạn trên
+Câu 152: Hệ tiết niệu vĩnh viễn ở người là
+A. Tiền thận
+B. Trung thận
+C. Hậu thận#
+D. Trung thận và tiền thận
+E. Trung thận và hậu thận
+Câu 153: Nguồn gốc của bể thận, ống góp, niệu quản, đài thận đều do;
+A. Nụ niệu quản#
+B. Trung bì trung gian rytb
+C. Mầm sinh thận
+D. Mầm sinh hậu thận
+E. Mầm sinh tiền thận
+Câu 154: Mầm sinh hậu thận không phải là tiền thân của:
+A. Bao bowman
+B. ống lượn gần
+C. ống lượn xa
+D. ống góp#
+E. quai henle
+Câu 155: Nhu mô thận gồm hai phần là:
+A. Vùng vỏ và vùng tủy#
+B. Tháp malpighi và tháp ferrin
+C. Cận vỏ và mê đạo
+D. Vùng vỏ xơ và vùng tủy
+E. Vùng vỏ và vùng cận vỏ
+Câu 156: Đơn vị cấu tạo và chức năng của thận là:
+A. Tiểu cầu thận
+B. ống góp
+C. Ông lượn
+D. Nephron#
+.E. Bể thận
+Câu 157: Đặc điểm của ống lượn xa:
+A. Lòng hẹp hơn
+B. Biểu mô ống bắt màu axit đậm hơn
+C. Biểu mô tuyến hình khối vuông
+D. Biểu mô có tế bào dẹt mỏng#
+E. Lòng ống hẹp hơn tế bào bắt màu acid đậm hơn
+Câu 158: Nang trúng nguyên thủy không có đặc điểm nào;
+A. Có noãn bào l
+B. Một lớp tế bào nang
+C. Lớp vỏ nang mỏng
+D. Nhiều lớp tế bào nang bao quanh#
+E. Tế bào nang dẹt mỏng
+Câu 159: Bánh rau không có chức năng nào sau đây:
+A. Nội tiết
+B. Dinh dưỡng cho phôi
+C. Hô hấp cho phổi#
+D. Ngoại tiết
+E. Bài tiết
+Câu 160: Tình nguyên bào có nguồn gốc từ:
+A. Tinh tử
+B. Dải biểu mô mầm
+C. Tế bào sinh dục nguyên thủy#
+D. Tinh bào  
+E. Tế bào sertoli
+Câu 161: Tế bào sertoli là tế bào:
+A. Tế bào dòng tinh#
+B. Tế bào liên kết
+C. Tế bào biểu mô không có thể nối ở mặt bên
+D. Tế bào biểu mô có thể nối ở mặt bên
+E. Đại thực bào
+Câu 162: Hệ sinh dục không bao gồm
+A. Các tuyến sinh dục
+B. Hệ ống sinh dục
+C. Bàng quang#
+D. Bộ phận sinh dục ngoài
+Câu 163: Mầm nguyên thủy của toàn bộ hệ thần kinh được tạo ra ở giai đoạn
+nào:
+A. Phôi dâu
+B. Phôi nang
+C. Phôi vị#
+.D. Phôi thần kinh
+Câu 164; Mầm nguyên thủy của toàn bộ hệ thần kinh được tạo ra vào khoảng
+ngày bao nhiêu sau thụ tinh
+Α. 14
+B. 15
+C. 16
+D. 17#
+Câu 165: Nguồn gốc của toàn bộ hệ thần kinh là
+A. ống thần kinh
+B. Máng thần kinh
+C. Tấm thần kinh#
+D. Trung bì phôi
+Câu 166: Có bao nhiêu túi noãn nguyên phát hình thành đầu tiên
+A. 1
+B. 2
+C. 3#
+D. 4
+Câu 167: Túi não thứ phát được hình thành vào tuần thứ bao nhiêu sau thụ tinh
+A. 3
+B. 4
+C. 5#
+D. 6
+Câu 168: Tế bào mào thần kinh xâm nhập vào biểu bì và biệt hóa thành:
+A. Tế bào mỡ
+B. Tế bảo sùng
+C. Tế bào sắc tố#
+D. Tế bào langerhans
+Câu 169: Hệ thần kinh bắt nguồn từ:
+Á. Trung bì phối
+B. Hạ bì phôi
+C. Mào thần kinh#
+D. ống thần kinh
+câu 170: Thành phần nào không có nguồn gốc tạo xương
+A. Mào thần kinh#
+B. Đốt trơ từ trung bì cận trục
+C. Lấ tạng
+D. Lá thành
+Câu 171: Sự cảm ứng tạo cơ vùng đầu:
+A. Do mô liên kết của la thành của trung bì tấm bên
+B. Do dây sống và ống thần kinh#
+C. Do mô liên kết từ các tế bào mào thần kinh
+.D. Do mô liên kết từ lá tạng trung bì tấm bên
+Câu 172: Tuyến yên có nguồn gốc từ đâu
+A. Ngoại bì da và ngoại bì thần kinh
+B. Ngoại bì thần kiinh và trung bì cận trục
+C. Trung bì cận trục và ngoại bì da
+D. Ngoại bì da, ngoại bì thần kinh và trung bì cận trục#
+Câu 173 Dùng đèn pin soi vào túi thoát vị ở rốn, nếu thấy rõ quai ruột thì có
+thể kết luận thoát vị rốn bẩm sinh do
+A. Thành bụng yếu
+B. Quai rột sau khi xoay k trở về  bụng#
+C. ống niệu rốn không xơ hóa lại sau sinh
+D. bất thường xoay bàng quang niệu dục nguyên thủy
+Câu 174: Mèo cho là đv gây nhiễm khuẩn toxoplasmosis khi phụ nữ mang thai
+tiếp xúc với mèo em bé sinh ra có nguy cơ mắc bệnh gì:
+A. Đục thủy tinh thể
+B. Dị tật tim
+C. Não úng thủy#
+D. Thiểu năng trí tuệ
+Câu 175: nội tiêt tố của mẹ ảnh hưởng thế nào khi mang thai:
+A. HCG tăng trong
+suốt quá trình mang thai
+B. HCG vẫn ổn định trong suốt thời kì mang thai
+C. Nồng độ estrogen suy giảm trong suốt thời kì mang thai
+D. Nồng độ estrogen tăng#
+Câu 176: Túi thừa meckel
+A. Trong lòng túi có thể chứa mô dạ dày#
+B. Chỉ gặp ở trẻ sơ sinh
+C. Triệu trứng lâm sàng rát giống viêm ruột thừa hoại tử
+D. Là di tích của ruột thừa
+Câu 177: Thoát vị tạng bẩm sinh  bụng
+A. Thoát vị thường là tụy
+B. Không thể chuẩn đoán trước sinh#
+C. Khối thoát vị có thể là gan và đi kèm các tạng khác ở lồng ngực
+D. Tất cả đều sai
+Câu 178: Chủng ngừa nào được khuyến cáo tiêm trước khi mang thai
+A. Uốn ván
+B. Bạch hầu, uốn ván và bại liệt
+C. Cúm
+D. Sởi, quai bị, rubela#
+Câu 179: Tỉ lệ mắc phải bất thường bẩm sinh ở trẻ nhỏ là:
+.Α. 40-60%
+B. 20-25%
+C. 15%
+D. 3%#
+Câu 180: Trẻ bị tú chứng Fallot là do
+A. Mẹ cúm một tháng trước sinh
+B. Mẹ bị uốn ván một tháng trước sinh
+C. Mẹ hút thuốc lá
+D. Không phải do nguyên nhân từ mẹ#
+Câu 181: Trong cơ quan của đường tiết niệu ccow quan nào có khả năng mắc bất
+thường cao nhất:
+A. Thận#
+B. Niệu quản
+C. Bàng quang
+D. Niệu đạo
+E. Cơ quan sinh dục ngoài
+Câu 182. Trong các dị tật về thận, dị tật nào thuộc về vị trí:
+A. Thận bất sản
+B. Thận phụ
+C. Thận sa
+D. Thận móng ngựa#
+E. Thạn hình bia
+Câu 183: Trong các bất thường bẩm sinh về thận sau, thường gặp nhất là:
+A. Nhiều thận
+B. Thận không phát triển
+C. Thận đôi
+D. Thận bất sản
+E. Thận phụ#
+Câu 184: mẹ bị béo phì con sinh ra sẽ có khả năng mắc bệnh gì
+A. Di tật tim#
+B. Khuyết não
+C. Chậm tăng trưởng
+D. Dị tật chi
+Câu 185: Trong các phương pháp chuẩn đoán trước sinh, phương pháp nào phổ
+biến nhất
+A. Siêu âm#
+B. Chọc dò dịch ối
+C. Sinh thiết gai rau
+D. Xét nghiệm máu mẹ
+</textarea>
 
-                setQuestions(newQuestionList);
-                setCurrentIdx(0);
-                setUserAnswers({});
-                window.scrollTo(0, 0);
-            };
+                <button onclick="startQuiz()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg transition shadow-md flex items-center justify-center gap-2">
+                    BẮT ĐẦU LÀM BÀI <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
 
-            const handleAnswer = (idx) => {
-                if (userAnswers[currentIdx] !== undefined) return;
+            <!-- 2. MÀN HÌNH LÀM BÀI -->
+            <div id="quiz-screen" class="hidden animate-fade">
+                <!-- Card Câu hỏi -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-8 mb-4 sm:mb-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <span id="question-counter" class="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 uppercase tracking-wider">Câu 1/185</span>
+                    </div>
+                    <!-- Nội dung câu hỏi (Giữ nguyên định dạng gốc) -->
+                    <h3 id="question-text" class="text-lg sm:text-xl font-semibold text-gray-900 leading-relaxed mb-8 whitespace-pre-wrap"></h3>
+                    
+                    <!-- Khung chứa các đáp án -->
+                    <div id="options-container" class="flex flex-col gap-3">
+                        <!-- Gen bằng JS -->
+                    </div>
+                </div>
+            </div>
 
-                setUserAnswers(prev => ({ ...prev, [currentIdx]: idx }));
+            <!-- 3. MÀN HÌNH KẾT QUẢ -->
+            <div id="result-screen" class="hidden animate-fade">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-10 text-center mb-6">
+                    <div class="w-20 h-20 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-yellow-100">
+                        <i class="fas fa-trophy text-4xl text-yellow-500"></i>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Hoàn thành bài kiểm tra!</h2>
+                    <p class="text-gray-500 mb-8">Chi tiết kết quả của bạn</p>
 
-                if (isAutoNext && currentIdx < questions.length - 1) {
-                    timerRef.current = setTimeout(() => {
-                        setCurrentIdx(prev => prev + 1);
-                    }, 1500); // Tăng thời gian delay một chút để kịp đọc giải thích nếu sai
-                }
-            };
-
-            const stats = useMemo(() => {
-                let correct = 0, completed = 0;
-                Object.keys(userAnswers).forEach(key => {
-                    const qId = parseInt(key);
-                    if (questions[qId] && userAnswers[qId] === questions[qId].correct) correct++;
-                    completed++;
-                });
-                return { correct, completed, total: questions.length };
-            }, [userAnswers, questions]);
-
-            const currentQ = questions[currentIdx];
-            const isAnswered = userAnswers[currentIdx] !== undefined;
-            const isCorrect = isAnswered && userAnswers[currentIdx] === currentQ.correct;
-
-            if (stats.completed === stats.total && stats.total > 0) {
-                return (
-                    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
-                        <div className="max-w-2xl w-full bg-white rounded-3xl p-8 shadow-2xl text-center border-t-8 border-blue-600">
-                            <h2 className="text-4xl font-extrabold text-slate-800 mb-6">KẾT QUẢ BÀI THI</h2>
-                            <div className="flex justify-center gap-8 my-8">
-                                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                                    <div className="text-slate-500 text-sm uppercase tracking-widest mb-1">Đúng</div>
-                                    <div className="text-4xl font-black text-green-600">{stats.correct}/{stats.total}</div>
-                                </div>
-                                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                                    <div className="text-slate-500 text-sm uppercase tracking-widest mb-1">Tỷ lệ</div>
-                                    <div className="text-4xl font-black text-blue-600">{Math.round((stats.correct/stats.total)*100)}%</div>
-                                </div>
-                            </div>
-                            <button 
-                                onClick={resetAndShuffle} 
-                                className="w-full py-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-all shadow-lg hover:shadow-blue-200 text-lg flex items-center justify-center gap-2"
-                            >
-                                <i className="fas fa-redo"></i> LÀM BÀI MỚI (RESET)
-                            </button>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                            <p class="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Tổng câu</p>
+                            <p id="res-total" class="text-2xl font-bold text-gray-800">0</p>
+                        </div>
+                        <div class="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                            <p class="text-xs text-blue-600 font-semibold mb-1 uppercase tracking-wider">Điểm số</p>
+                            <p id="res-score" class="text-2xl font-bold text-blue-700">0.0</p>
+                        </div>
+                        <div class="p-4 bg-green-50 rounded-xl border border-green-100">
+                            <p class="text-xs text-green-600 font-semibold mb-1 uppercase tracking-wider">Câu đúng</p>
+                            <p id="res-correct" class="text-2xl font-bold text-green-700">0</p>
+                        </div>
+                        <div class="p-4 bg-red-50 rounded-xl border border-red-100">
+                            <p class="text-xs text-red-600 font-semibold mb-1 uppercase tracking-wider">Câu sai</p>
+                            <p id="res-wrong" class="text-2xl font-bold text-red-700">0</p>
                         </div>
                     </div>
-                );
-            }
 
-            return (
-                <div className="min-h-screen flex flex-col md:flex-row bg-slate-50">
-                    <aside className="w-full md:w-80 bg-white border-r border-slate-200 flex flex-col h-[30vh] md:h-screen sticky top-0 z-10 shadow-lg md:shadow-none">
-                        <div className="p-5 border-b border-slate-100">
-                            <div className="flex justify-between items-center mb-4">
-                                <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                    <i className="fas fa-atom text-blue-600"></i> Lý Sinh Y Học 1
-                                </h1>
-                                <button 
-                                    onClick={() => {
-                                        if (confirm("Bạn có chắc muốn xóa toàn bộ tiến độ và làm lại từ đầu không?")) {
-                                            resetAndShuffle();
-                                        }
-                                    }}
-                                    title="Trộn đề và làm lại từ đầu"
-                                    className="w-8 h-8 rounded-full bg-slate-100 hover:bg-blue-100 text-slate-500 hover:text-blue-600 flex items-center justify-center transition-all shuffle-btn"
-                                >
-                                    <i className="fas fa-redo"></i>
-                                </button>
-                            </div>
-                            <div className="bg-slate-100 rounded-xl p-3 flex justify-between items-center text-sm font-semibold text-slate-600">
-                                <span><i className="fas fa-check-circle text-green-500 mr-1"></i> {stats.correct}/{stats.completed}</span>
-                                <span className="text-slate-400">|</span>
-                                <span>{Math.round((stats.completed / stats.total) * 100)}%</span>
-                            </div>
-                            <div className="mt-2 text-xs text-center text-slate-400">
-                                <i className="fas fa-save mr-1"></i> Tiến độ tự động lưu
-                            </div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
-                            <div className="grid grid-cols-5 gap-2">
-                                {questions.map((_, idx) => {
-                                    const status = userAnswers[idx];
-                                    let btnClass = "h-9 rounded-lg text-xs font-bold transition-all duration-200 ";
-                                    if (status === undefined) {
-                                        btnClass += idx === currentIdx 
-                                            ? "bg-blue-600 text-white shadow-lg ring-2 ring-blue-200 transform scale-105" 
-                                            : "bg-slate-50 text-slate-500 hover:bg-slate-200 border border-slate-100";
-                                    } else {
-                                        const isQCorrect = status === questions[idx].correct;
-                                        btnClass += isQCorrect ? "bg-green-500 text-white" : "bg-red-500 text-white";
-                                        if (idx === currentIdx) btnClass += " ring-2 ring-slate-400 transform scale-105";
-                                    }
-                                    return (
-                                        <button key={idx} onClick={() => { if(timerRef.current) clearTimeout(timerRef.current); setCurrentIdx(idx); }} className={btnClass}>
-                                            {idx + 1}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </aside>
-
-                    <main className="flex-1 p-4 md:p-8 flex flex-col h-[70vh] md:h-screen overflow-hidden">
-                        <div className="flex flex-col md:flex-row justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-100 gap-4">
-                            <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">
-                                Câu hỏi {currentIdx + 1}
-                            </span>
-                            <div className="flex items-center gap-6">
-                                <div className="flex items-center gap-3" title="Đảo lộn vị trí đáp án khi làm lại đề">
-                                    <span className={`text-sm font-semibold ${isShuffleAnswers ? 'text-purple-600' : 'text-slate-400'}`}>
-                                        <i className="fas fa-random mr-1"></i> Trộn đáp án
-                                    </span>
-                                    <div className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
-                                        <input type="checkbox" className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0" checked={isShuffleAnswers} onChange={() => setIsShuffleAnswers(!isShuffleAnswers)} />
-                                        <label className={`toggle-label block overflow-hidden h-5 rounded-full cursor-pointer transition-colors duration-300 ${isShuffleAnswers ? 'bg-purple-500' : 'bg-slate-300'}`}></label>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className={`text-sm font-semibold ${isAutoNext ? 'text-blue-600' : 'text-slate-400'}`}>
-                                        <i className="fas fa-bolt mr-1"></i> Auto Next
-                                    </span>
-                                    <div className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
-                                        <input type="checkbox" className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0" checked={isAutoNext} onChange={() => setIsAutoNext(!isAutoNext)} />
-                                        <label className={`toggle-label block overflow-hidden h-5 rounded-full cursor-pointer transition-colors duration-300 ${isAutoNext ? 'bg-blue-500' : 'bg-slate-300'}`}></label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex-1 bg-white rounded-3xl shadow-xl p-6 md:p-10 border border-slate-100 overflow-y-auto custom-scrollbar relative">
-                            <div className="max-w-3xl mx-auto slide-in">
-                                <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-8 leading-snug">
-                                    {currentQ.q}
-                                </h2>
-                                <div className="space-y-4">
-                                    {currentQ.a.map((opt, optIdx) => {
-                                        let optionClass = "w-full p-5 rounded-2xl border-2 text-left relative transition-all duration-300 flex items-center gap-4 group ";
-                                        if (!isAnswered) {
-                                            optionClass += "border-slate-100 hover:border-blue-400 hover:bg-blue-50 hover:shadow-md cursor-pointer";
-                                        } else {
-                                            if (optIdx === currentQ.correct) {
-                                                optionClass += "border-green-500 bg-green-50 text-green-900 shadow-inner correct-pulse";
-                                            } else if (optIdx === userAnswers[currentIdx]) {
-                                                optionClass += "border-red-500 bg-red-50 text-red-900 opacity-90";
-                                            } else {
-                                                optionClass += "border-slate-50 opacity-40 grayscale";
-                                            }
-                                        }
-                                        return (
-                                            <button key={optIdx} disabled={isAnswered} onClick={() => handleAnswer(optIdx)} className={optionClass}>
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${isAnswered && optIdx === currentQ.correct ? 'bg-green-600 text-white' : isAnswered && optIdx === userAnswers[currentIdx] ? 'bg-red-500 text-white' : 'bg-slate-200 text-slate-500 group-hover:bg-blue-500 group-hover:text-white'}`}>
-                                                    {String.fromCharCode(65 + optIdx)}
-                                                </div>
-                                                <span className="font-medium text-lg">{opt}</span>
-                                                {isAnswered && optIdx === currentQ.correct && (
-                                                    <i className="fas fa-check-circle text-green-600 text-xl ml-auto animate-bounce"></i>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                {isAnswered && !isCorrect && (
-                                    <div className="mt-8 p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded-r-lg shadow-sm slide-in">
-                                        <p className="font-bold mb-1"><i className="fas fa-info-circle mr-2"></i> Đáp án đúng là:</p>
-                                        <p className="text-lg mb-2">{String.fromCharCode(65 + currentQ.correct)}. {currentQ.a[currentQ.correct]}</p>
-                                        {currentQ.explain && (
-                                            <div className="mt-2 text-sm text-yellow-700 italic border-t border-yellow-200 pt-2">
-                                                <i className="fas fa-lightbulb mr-1"></i> <strong>Giải thích:</strong> {currentQ.explain}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="mt-6 flex justify-between items-center max-w-3xl mx-auto w-full px-4">
-                            <button onClick={() => { if(timerRef.current) clearTimeout(timerRef.current); setCurrentIdx(Math.max(0, currentIdx - 1)); }} disabled={currentIdx === 0} className="text-slate-500 hover:text-blue-600 font-semibold disabled:opacity-30 transition-colors">
-                                <i className="fas fa-arrow-left mr-2"></i> Câu trước
-                            </button>
-                            <button onClick={() => { if(timerRef.current) clearTimeout(timerRef.current); setCurrentIdx(Math.min(questions.length - 1, currentIdx + 1)); }} disabled={currentIdx === questions.length - 1} className="bg-slate-800 hover:bg-black text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center gap-2">
-                                Câu tiếp theo <i className="fas fa-arrow-right"></i>
-                            </button>
-                        </div>
-                    </main>
+                    <button onclick="location.reload()" class="bg-gray-900 hover:bg-black text-white w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold transition flex justify-center items-center gap-2 mx-auto">
+                        <i class="fas fa-redo"></i> LÀM LẠI BÀI TẬP
+                    </button>
                 </div>
-            );
+
+                <!-- Phần xem lại chi tiết -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-8">
+                    <h3 class="text-lg font-bold text-gray-900 mb-6 border-b pb-4 flex items-center"><i class="fas fa-clipboard-check mr-2 text-blue-600"></i> Xem lại đáp án chi tiết</h3>
+                    <div id="review-container" class="space-y-6">
+                        <!-- Gen bằng JS -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Navigation Cố định cho Mobile (chỉ hiện khi đang làm bài) -->
+    <div id="mobile-nav" class="hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 sm:p-4 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <div class="max-w-3xl mx-auto flex gap-3">
+            <button id="btn-prev" onclick="changeQuestion(-1)" class="flex-1 py-3.5 sm:py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                <i class="fas fa-chevron-left mr-1"></i> Trước
+            </button>
+            <button id="btn-next" onclick="changeQuestion(1)" class="flex-[1.5] py-3.5 sm:py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition shadow-md">
+                Tiếp theo <i class="fas fa-chevron-right ml-1"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Xác nhận nộp bài -->
+    <div id="submit-modal" class="fixed inset-0 bg-gray-900/60 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white p-6 sm:p-8 rounded-2xl w-[90%] max-w-sm text-center shadow-xl">
+            <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-5 text-2xl">
+                <i class="fas fa-paper-plane"></i>
+            </div>
+            <h3 class="text-xl font-bold mb-2">Xác nhận nộp bài?</h3>
+            <p id="unanswered-warning" class="text-gray-500 text-sm mb-6 leading-relaxed">Bạn đã hoàn thành bài làm. Bạn có chắc chắn muốn nộp bài ngay?</p>
+            <div class="flex gap-3">
+                <button onclick="closeModal()" class="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition">Quay lại</button>
+                <button onclick="finishQuiz()" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition shadow-md">Nộp ngay</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let questions = [];
+        let currentIndex = 0;
+        let userAnswers = []; 
+        let startTime;
+        let timerInterval;
+
+        // BỘ PHÂN TÍCH DỮ LIỆU ĐẶC BIỆT: GIỮ NGUYÊN NỘI DUNG GỐC
+        function parseTextData(text) {
+            // Lọc bỏ các dòng không cần thiết như --- PAGE 1 ---
+            const lines = text.split('\n')
+                .map(l => l.trim())
+                .filter(l => l !== '' && !l.includes('--- PAGE'));
+                
+            const parsed = [];
+            let currentQ = null;
+
+            // Regex bắt câu hỏi (bắt đầu bằng Câu, Question, Bài)
+            const questionRegex = /^(Câu|Question|Bài|câu)\s*\d+[\:\.\-]?/i;
+            
+            // Regex bắt đáp án (A, B, C, D, E hoặc ký tự Alpha có chấm/ngoặc)
+            const optionRegex = /^[\.\s]*[A-EΑ-ΕÁ-É][\.\)]/i; 
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+
+                if (questionRegex.test(line)) {
+                    if (currentQ && currentQ.options.length > 0) parsed.push(currentQ);
+                    currentQ = { text: line, options: [], correctIndex: -1 };
+                } 
+                else if (currentQ && optionRegex.test(line)) {
+                    // Dòng này là đáp án
+                    let isCorrect = line.endsWith('#');
+                    
+                    // Giữ nguyên dòng, CHỈ xóa dấu # ở cuối nếu có
+                    let optText = isCorrect ? line.slice(0, -1).trim() : line;
+
+                    currentQ.options.push(optText);
+                    if (isCorrect) currentQ.correctIndex = currentQ.options.length - 1;
+                } 
+                else if (currentQ) {
+                    // Nối chữ nếu câu hỏi/đáp án dài qua dòng mới
+                    if (currentQ.options.length === 0) {
+                        currentQ.text += '\n' + line;
+                    } else {
+                        currentQ.options[currentQ.options.length - 1] += ' ' + line;
+                    }
+                }
+            }
+            if (currentQ && currentQ.options.length > 0) parsed.push(currentQ);
+            return parsed;
+        }
+
+        // Tự động phân tích lúc vừa tải trang để đếm số câu
+        window.onload = () => {
+            const rawText = document.getElementById('raw-data').value;
+            questions = parseTextData(rawText);
+            document.getElementById('total-q-display').innerText = questions.length;
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        function startQuiz() {
+            if (questions.length === 0) {
+                alert("Dữ liệu câu hỏi trống hoặc sai định dạng."); return;
+            }
+
+            userAnswers = new Array(questions.length).fill(null);
+            
+            // Chuyển UI
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            document.getElementById('quiz-header-info').classList.remove('hidden');
+            document.getElementById('quiz-header-info').classList.add('flex');
+            document.getElementById('mobile-nav').classList.remove('hidden');
+            document.getElementById('top-progress-container').classList.remove('hidden');
+
+            startTimer();
+            renderQuestion();
+        }
+
+        function startTimer() {
+            startTime = new Date();
+            timerInterval = setInterval(() => {
+                const now = new Date();
+                const diff = Math.floor((now - startTime) / 1000);
+                const m = Math.floor(diff / 60).toString().padStart(2, '0');
+                const s = (diff % 60).toString().padStart(2, '0');
+                document.getElementById('timer').innerText = `${m}:${s}`;
+            }, 1000);
+        }
+
+        function renderQuestion() {
+            const q = questions[currentIndex];
+            
+            // Render text câu hỏi (bảo toàn ký tự đặc biệt)
+            document.getElementById('question-text').textContent = q.text;
+
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+
+            q.options.forEach((optText, index) => {
+                const btn = document.createElement('button');
+                const isSelected = userAnswers[currentIndex] === index;
+                
+                btn.className = `option-btn w-full text-left p-4 sm:p-5 rounded-xl text-[15px] sm:text-base font-medium text-gray-700 cursor-pointer flex items-start gap-3 ${isSelected ? 'selected' : ''}`;
+                btn.onclick = () => selectOption(index);
+                
+                const iconClass = isSelected ? 'fas fa-dot-circle text-blue-600 mt-0.5' : 'far fa-circle text-gray-300 mt-0.5';
+                
+                btn.innerHTML = `
+                    <i class="${iconClass} text-lg"></i>
+                    <span class="flex-1 leading-snug">${optText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>
+                `;
+                container.appendChild(btn);
+            });
+
+            // Cập nhật trạng thái
+            const currentNum = currentIndex + 1;
+            const total = questions.length;
+            const percent = ((currentNum / total) * 100).toFixed(0);
+            
+            document.getElementById('question-counter').innerText = `Câu ${currentNum}/${total}`;
+            document.getElementById('top-progress-bar').style.width = `${percent}%`;
+
+            // Nút điều hướng
+            document.getElementById('btn-prev').disabled = currentIndex === 0;
+            const btnNext = document.getElementById('btn-next');
+            if (currentIndex === total - 1) {
+                btnNext.innerHTML = 'Nộp bài <i class="fas fa-check ml-1"></i>';
+                btnNext.className = 'flex-[1.5] py-3.5 sm:py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition shadow-md';
+            } else {
+                btnNext.innerHTML = 'Tiếp theo <i class="fas fa-chevron-right ml-1"></i>';
+                btnNext.className = 'flex-[1.5] py-3.5 sm:py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition shadow-md';
+            }
+        }
+
+        function selectOption(optIndex) {
+            userAnswers[currentIndex] = optIndex;
+            renderQuestion();
+            // Tự động chuyển câu tiếp nếu trên mobile (Tùy chọn UX, tắt tạm thời để người dùng đọc lại)
+            // setTimeout(() => changeQuestion(1), 300); 
+        }
+
+        function changeQuestion(step) {
+            if (step === 1 && currentIndex === questions.length - 1) {
+                confirmSubmit();
+                return;
+            }
+            
+            const newIndex = currentIndex + step;
+            if (newIndex >= 0 && newIndex < questions.length) {
+                currentIndex = newIndex;
+                renderQuestion();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        function confirmSubmit() {
+            const unanswered = userAnswers.filter(a => a === null).length;
+            const warningText = document.getElementById('unanswered-warning');
+            
+            if (unanswered > 0) {
+                warningText.innerText = `Bạn còn ${unanswered} câu chưa trả lời. Chắc chắn nộp bài?`;
+                warningText.classList.add('text-red-500');
+            } else {
+                warningText.innerText = "Tuyệt vời, bạn đã trả lời tất cả các câu hỏi. Nộp bài ngay?";
+                warningText.classList.remove('text-red-500');
+            }
+
+            const modal = document.getElementById('submit-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('submit-modal').classList.add('hidden');
+            document.getElementById('submit-modal').classList.remove('flex');
+        }
+
+        function finishQuiz() {
+            closeModal();
+            clearInterval(timerInterval);
+
+            let correctCount = 0;
+            questions.forEach((q, idx) => {
+                if (userAnswers[idx] === q.correctIndex) correctCount++;
+            });
+
+            // UI Changes
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('quiz-header-info').classList.add('hidden');
+            document.getElementById('mobile-nav').classList.add('hidden');
+            document.getElementById('top-progress-container').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+
+            const score10 = ((correctCount / questions.length) * 10).toFixed(2);
+            document.getElementById('res-total').innerText = questions.length;
+            document.getElementById('res-score').innerText = score10;
+            document.getElementById('res-correct').innerText = correctCount;
+            document.getElementById('res-wrong').innerText = questions.length - correctCount;
+
+            renderReview();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function renderReview() {
+            const container = document.getElementById('review-container');
+            container.innerHTML = '';
+
+            questions.forEach((q, qIndex) => {
+                const isUserCorrect = userAnswers[qIndex] === q.correctIndex;
+                const isSkipped = userAnswers[qIndex] === null;
+
+                const qDiv = document.createElement('div');
+                qDiv.className = "p-4 sm:p-5 bg-gray-50/50 rounded-xl border border-gray-200 mb-4";
+
+                let badge = isUserCorrect 
+                    ? '<span class="inline-block px-2 py-0.5 bg-green-100 text-green-700 text-[11px] font-bold rounded uppercase ml-2 align-middle">Đúng</span>'
+                    : (isSkipped ? '<span class="inline-block px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[11px] font-bold rounded uppercase ml-2 align-middle">Bỏ qua</span>' 
+                                 : '<span class="inline-block px-2 py-0.5 bg-red-100 text-red-700 text-[11px] font-bold rounded uppercase ml-2 align-middle">Sai</span>');
+
+                qDiv.innerHTML = `<h4 class="font-semibold text-gray-900 mb-4 text-[15px] sm:text-base whitespace-pre-wrap">${q.text}${badge}</h4>`;
+
+                const optsDiv = document.createElement('div');
+                optsDiv.className = "flex flex-col gap-2";
+
+                q.options.forEach((optText, optIndex) => {
+                    const optBtn = document.createElement('div');
+                    let classes = "p-3 rounded-lg text-sm border font-medium flex gap-2 items-start ";
+                    let icon = '<i class="far fa-circle mt-0.5 text-gray-400"></i>';
+
+                    // Đánh dấu đáp án đúng
+                    if (optIndex === q.correctIndex) {
+                        classes += "bg-green-50 border-green-200 text-green-800";
+                        icon = '<i class="fas fa-check-circle mt-0.5 text-green-600"></i>';
+                    } 
+                    // Đánh dấu đáp án sai user đã chọn
+                    else if (optIndex === userAnswers[qIndex] && !isUserCorrect) {
+                        classes += "bg-red-50 border-red-200 text-red-800 line-through opacity-80";
+                        icon = '<i class="fas fa-times-circle mt-0.5 text-red-600"></i>';
+                    } 
+                    // Các đáp án khác
+                    else {
+                        classes += "bg-white border-gray-200 text-gray-500 opacity-60";
+                    }
+
+                    optBtn.className = classes;
+                    optBtn.innerHTML = `${icon} <span class="flex-1 leading-snug">${optText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>`;
+                    optsDiv.appendChild(optBtn);
+                });
+
+                qDiv.appendChild(optsDiv);
+                container.appendChild(qDiv);
+            });
+        }
     </script>
 </body>
 </html>
+
+
