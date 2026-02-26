@@ -3,23 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hệ Thống Thi Trắc Nghiệm</title>
+    <title>Hệ Thống Thi Trắc Nghiệm - Ôn Tập</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
         
-        .option-btn { transition: all 0.2s ease; border: 2px solid #e5e7eb; }
-        @media (hover: hover) { .option-btn:hover { border-color: #cbd5e1; background-color: #f8fafc; } }
-        .option-btn:active { transform: scale(0.98); }
-        .option-btn.selected { border-color: #3b82f6; background-color: #eff6ff; }
+        .option-btn { transition: all 0.25s ease; border: 2px solid #e5e7eb; }
+        @media (hover: hover) { 
+            .option-btn:not(:disabled):hover { border-color: #cbd5e1; background-color: #f8fafc; } 
+        }
+        .option-btn:not(:disabled):active { transform: scale(0.98); }
         
-        /* Hiệu ứng mượt mà */
+        /* Hiệu ứng rung nhẹ khi chọn sai */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+        .shake-animation { animation: shake 0.3s ease-in-out; }
+        
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
         
-        /* Tùy chỉnh thanh cuộn */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -32,9 +39,9 @@
         <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-md">
-                    <i class="fas fa-file-alt text-lg"></i>
+                    <i class="fas fa-book-open text-lg"></i>
                 </div>
-                <h1 class="font-bold text-lg text-gray-800 line-clamp-1">KHCB 2 - Cuối Kỳ</h1>
+                <h1 class="font-bold text-lg text-gray-800 line-clamp-1">KHCB 2 - Chế độ Học Tắt</h1>
             </div>
             
             <div id="quiz-header-info" class="hidden flex items-center gap-3 sm:gap-4">
@@ -46,7 +53,6 @@
                 </button>
             </div>
         </div>
-        <!-- Thanh tiến độ mỏng ở Header -->
         <div id="top-progress-container" class="hidden absolute bottom-0 left-0 w-full h-1 bg-gray-200">
             <div id="top-progress-bar" class="h-full bg-blue-500 transition-all duration-300" style="width: 0%"></div>
         </div>
@@ -59,23 +65,22 @@
             <!-- 1. MÀN HÌNH BẮT ĐẦU -->
             <div id="setup-screen" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-10 animate-fade text-center">
                 <div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
-                    <i class="fas fa-graduation-cap"></i>
+                    <i class="fas fa-brain"></i>
                 </div>
-                <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">Sẵn sàng làm bài?</h2>
-                <p class="text-gray-500 mb-8 leading-relaxed">Hệ thống đã nạp sẵn dữ liệu câu hỏi từ tài liệu. Các đáp án đúng đã được hệ thống tự động ghi nhận và ẩn đi.</p>
+                <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">Chế độ ôn luyện</h2>
+                <p class="text-gray-500 mb-8 leading-relaxed">Hệ thống sẽ <b>báo ngay đáp án Đúng/Sai</b> sau khi bạn đưa ra lựa chọn. Giúp bạn ghi nhớ kiến thức tốt hơn.</p>
                 
                 <div class="grid grid-cols-2 gap-4 mb-8">
                     <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
                         <p id="total-q-display" class="text-3xl font-bold text-blue-600">...</p>
                         <p class="text-xs font-semibold text-gray-500 uppercase mt-1">Câu hỏi</p>
                     </div>
-                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                        <p class="text-3xl font-bold text-green-600">60</p>
-                        <p class="text-xs font-semibold text-gray-500 uppercase mt-1">Phút</p>
+                    <div class="bg-green-50 p-4 rounded-xl border border-green-100 text-green-700">
+                        <i class="fas fa-check-double text-2xl mb-1"></i>
+                        <p class="text-xs font-semibold uppercase mt-1">Chữa lỗi ngay</p>
                     </div>
                 </div>
 
-                <!-- Khu vực chứa data ẩn (chứa đề bài của bạn) -->
                 <textarea id="raw-data" class="hidden">
 Câu 1: Vị trí của màng rụng tử cung ở cuối tháng thứ 2 thời kỳ phôi thai là:
 A) Nằm giữa trứng và cơ tử cung
@@ -1141,11 +1146,10 @@ Câu 174: Mèo cho là đv gây nhiễm khuẩn toxoplasmosis khi phụ nữ man
 tiếp xúc với mèo em bé sinh ra có nguy cơ mắc bệnh gì:
 A. Đục thủy tinh thể
 B. Dị tật tim
-C. Não úng thủy#
-D. Thiểu năng trí tuệ
+C. Không não thủy
+D. Thiểu năng trí tuệ#
 Câu 175: nội tiêt tố của mẹ ảnh hưởng thế nào khi mang thai:
-A. HCG tăng trong
-suốt quá trình mang thai
+A. HCG tăng trong suốt quá trình mang thai
 B. HCG vẫn ổn định trong suốt thời kì mang thai
 C. Nồng độ estrogen suy giảm trong suốt thời kì mang thai
 D. Nồng độ estrogen tăng#
@@ -1207,23 +1211,22 @@ D. Xét nghiệm máu mẹ
 </textarea>
 
                 <button onclick="startQuiz()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg transition shadow-md flex items-center justify-center gap-2">
-                    BẮT ĐẦU LÀM BÀI <i class="fas fa-arrow-right"></i>
+                    BẮT ĐẦU ÔN LUYỆN <i class="fas fa-play"></i>
                 </button>
             </div>
 
             <!-- 2. MÀN HÌNH LÀM BÀI -->
             <div id="quiz-screen" class="hidden animate-fade">
-                <!-- Card Câu hỏi -->
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-8 mb-4 sm:mb-6">
                     <div class="flex justify-between items-center mb-6">
                         <span id="question-counter" class="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 uppercase tracking-wider">Câu 1/185</span>
+                        <span id="feedback-badge" class="hidden px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider transition-all"></span>
                     </div>
-                    <!-- Nội dung câu hỏi (Giữ nguyên định dạng gốc) -->
+                    
                     <h3 id="question-text" class="text-lg sm:text-xl font-semibold text-gray-900 leading-relaxed mb-8 whitespace-pre-wrap"></h3>
                     
-                    <!-- Khung chứa các đáp án -->
                     <div id="options-container" class="flex flex-col gap-3">
-                        <!-- Gen bằng JS -->
+                        <!-- Nơi chứa các đáp án -->
                     </div>
                 </div>
             </div>
@@ -1231,13 +1234,12 @@ D. Xét nghiệm máu mẹ
             <!-- 3. MÀN HÌNH KẾT QUẢ -->
             <div id="result-screen" class="hidden animate-fade">
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-10 text-center mb-6">
-                    <div class="w-20 h-20 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-yellow-100">
-                        <i class="fas fa-trophy text-4xl text-yellow-500"></i>
+                    <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100">
+                        <i class="fas fa-flag-checkered text-4xl text-blue-500"></i>
                     </div>
-                    <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Hoàn thành bài kiểm tra!</h2>
-                    <p class="text-gray-500 mb-8">Chi tiết kết quả của bạn</p>
-
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
+                    <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Hoàn thành đợt ôn tập!</h2>
+                    
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8 mt-6">
                         <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
                             <p class="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-wider">Tổng câu</p>
                             <p id="res-total" class="text-2xl font-bold text-gray-800">0</p>
@@ -1257,23 +1259,15 @@ D. Xét nghiệm máu mẹ
                     </div>
 
                     <button onclick="location.reload()" class="bg-gray-900 hover:bg-black text-white w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold transition flex justify-center items-center gap-2 mx-auto">
-                        <i class="fas fa-redo"></i> LÀM LẠI BÀI TẬP
+                        <i class="fas fa-redo"></i> THỬ LẠI LẦN NỮA
                     </button>
-                </div>
-
-                <!-- Phần xem lại chi tiết -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-8">
-                    <h3 class="text-lg font-bold text-gray-900 mb-6 border-b pb-4 flex items-center"><i class="fas fa-clipboard-check mr-2 text-blue-600"></i> Xem lại đáp án chi tiết</h3>
-                    <div id="review-container" class="space-y-6">
-                        <!-- Gen bằng JS -->
-                    </div>
                 </div>
             </div>
 
         </div>
     </main>
 
-    <!-- Navigation Cố định cho Mobile (chỉ hiện khi đang làm bài) -->
+    <!-- Navigation Cố định -->
     <div id="mobile-nav" class="hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 sm:p-4 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         <div class="max-w-3xl mx-auto flex gap-3">
             <button id="btn-prev" onclick="changeQuestion(-1)" class="flex-1 py-3.5 sm:py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition disabled:opacity-40 disabled:cursor-not-allowed">
@@ -1292,7 +1286,7 @@ D. Xét nghiệm máu mẹ
                 <i class="fas fa-paper-plane"></i>
             </div>
             <h3 class="text-xl font-bold mb-2">Xác nhận nộp bài?</h3>
-            <p id="unanswered-warning" class="text-gray-500 text-sm mb-6 leading-relaxed">Bạn đã hoàn thành bài làm. Bạn có chắc chắn muốn nộp bài ngay?</p>
+            <p id="unanswered-warning" class="text-gray-500 text-sm mb-6 leading-relaxed">Bạn có chắc chắn muốn kết thúc bài thi ngay bây giờ?</p>
             <div class="flex gap-3">
                 <button onclick="closeModal()" class="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition">Quay lại</button>
                 <button onclick="finishQuiz()" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition shadow-md">Nộp ngay</button>
@@ -1307,9 +1301,8 @@ D. Xét nghiệm máu mẹ
         let startTime;
         let timerInterval;
 
-        // BỘ PHÂN TÍCH DỮ LIỆU ĐẶC BIỆT: GIỮ NGUYÊN NỘI DUNG GỐC
+        // Bộ phân tích giữ nguyên định dạng
         function parseTextData(text) {
-            // Lọc bỏ các dòng không cần thiết như --- PAGE 1 ---
             const lines = text.split('\n')
                 .map(l => l.trim())
                 .filter(l => l !== '' && !l.includes('--- PAGE'));
@@ -1317,10 +1310,7 @@ D. Xét nghiệm máu mẹ
             const parsed = [];
             let currentQ = null;
 
-            // Regex bắt câu hỏi (bắt đầu bằng Câu, Question, Bài)
             const questionRegex = /^(Câu|Question|Bài|câu)\s*\d+[\:\.\-]?/i;
-            
-            // Regex bắt đáp án (A, B, C, D, E hoặc ký tự Alpha có chấm/ngoặc)
             const optionRegex = /^[\.\s]*[A-EΑ-ΕÁ-É][\.\)]/i; 
 
             for (let i = 0; i < lines.length; i++) {
@@ -1331,29 +1321,20 @@ D. Xét nghiệm máu mẹ
                     currentQ = { text: line, options: [], correctIndex: -1 };
                 } 
                 else if (currentQ && optionRegex.test(line)) {
-                    // Dòng này là đáp án
                     let isCorrect = line.endsWith('#');
-                    
-                    // Giữ nguyên dòng, CHỈ xóa dấu # ở cuối nếu có
                     let optText = isCorrect ? line.slice(0, -1).trim() : line;
-
                     currentQ.options.push(optText);
                     if (isCorrect) currentQ.correctIndex = currentQ.options.length - 1;
                 } 
                 else if (currentQ) {
-                    // Nối chữ nếu câu hỏi/đáp án dài qua dòng mới
-                    if (currentQ.options.length === 0) {
-                        currentQ.text += '\n' + line;
-                    } else {
-                        currentQ.options[currentQ.options.length - 1] += ' ' + line;
-                    }
+                    if (currentQ.options.length === 0) currentQ.text += '\n' + line;
+                    else currentQ.options[currentQ.options.length - 1] += ' ' + line;
                 }
             }
             if (currentQ && currentQ.options.length > 0) parsed.push(currentQ);
             return parsed;
         }
 
-        // Tự động phân tích lúc vừa tải trang để đếm số câu
         window.onload = () => {
             const rawText = document.getElementById('raw-data').value;
             questions = parseTextData(rawText);
@@ -1361,13 +1342,9 @@ D. Xét nghiệm máu mẹ
         };
 
         function startQuiz() {
-            if (questions.length === 0) {
-                alert("Dữ liệu câu hỏi trống hoặc sai định dạng."); return;
-            }
-
+            if (questions.length === 0) { alert("Dữ liệu câu hỏi trống."); return; }
             userAnswers = new Array(questions.length).fill(null);
             
-            // Chuyển UI
             document.getElementById('setup-screen').classList.add('hidden');
             document.getElementById('quiz-screen').classList.remove('hidden');
             document.getElementById('quiz-header-info').classList.remove('hidden');
@@ -1392,30 +1369,69 @@ D. Xét nghiệm máu mẹ
 
         function renderQuestion() {
             const q = questions[currentIndex];
+            const hasAnswered = userAnswers[currentIndex] !== null; // Kiểm tra xem đã trả lời câu này chưa
             
-            // Render text câu hỏi (bảo toàn ký tự đặc biệt)
             document.getElementById('question-text').textContent = q.text;
 
             const container = document.getElementById('options-container');
             container.innerHTML = '';
 
+            // Badge Hiển thị kết quả đúng/sai góc trên cùng
+            const badge = document.getElementById('feedback-badge');
+            if (hasAnswered) {
+                badge.classList.remove('hidden');
+                if (userAnswers[currentIndex] === q.correctIndex) {
+                    badge.className = "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider transition-all bg-green-100 text-green-700";
+                    badge.innerHTML = '<i class="fas fa-check mr-1"></i> Chính xác';
+                } else {
+                    badge.className = "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider transition-all bg-red-100 text-red-700";
+                    badge.innerHTML = '<i class="fas fa-times mr-1"></i> Chưa đúng';
+                }
+            } else {
+                badge.classList.add('hidden');
+            }
+
             q.options.forEach((optText, index) => {
                 const btn = document.createElement('button');
                 const isSelected = userAnswers[currentIndex] === index;
+                const isCorrectOption = index === q.correctIndex;
                 
-                btn.className = `option-btn w-full text-left p-4 sm:p-5 rounded-xl text-[15px] sm:text-base font-medium text-gray-700 cursor-pointer flex items-start gap-3 ${isSelected ? 'selected' : ''}`;
-                btn.onclick = () => selectOption(index);
-                
-                const iconClass = isSelected ? 'fas fa-dot-circle text-blue-600 mt-0.5' : 'far fa-circle text-gray-300 mt-0.5';
-                
+                let btnClass = "option-btn w-full text-left p-4 sm:p-5 rounded-xl text-[15px] sm:text-base font-medium flex items-start gap-3 transition-all ";
+                let iconHtml = '';
+
+                if (!hasAnswered) {
+                    // Trạng thái chưa trả lời
+                    btnClass += "text-gray-700 bg-white hover:bg-gray-50 cursor-pointer";
+                    iconHtml = '<i class="far fa-circle text-gray-300 mt-0.5 text-lg"></i>';
+                    btn.onclick = () => selectOption(index);
+                } else {
+                    // ĐÃ TRẢ LỜI -> Vô hiệu hóa nút và đổ màu
+                    btn.disabled = true;
+                    btnClass += "cursor-default ";
+                    
+                    if (isCorrectOption) {
+                        // Hiện đáp án đúng màu xanh
+                        btnClass += "bg-green-50 border-green-400 text-green-800 shadow-sm";
+                        iconHtml = '<i class="fas fa-check-circle text-green-600 mt-0.5 text-lg"></i>';
+                    } else if (isSelected && !isCorrectOption) {
+                        // Nếu user chọn sai, bôi đỏ đáp án user chọn
+                        btnClass += "bg-red-50 border-red-400 text-red-800 shadow-sm shake-animation";
+                        iconHtml = '<i class="fas fa-times-circle text-red-600 mt-0.5 text-lg"></i>';
+                    } else {
+                        // Các đáp án khác thì làm mờ
+                        btnClass += "bg-gray-50 border-gray-200 text-gray-400 opacity-60";
+                        iconHtml = '<i class="far fa-circle text-gray-300 mt-0.5 text-lg"></i>';
+                    }
+                }
+
+                btn.className = btnClass;
                 btn.innerHTML = `
-                    <i class="${iconClass} text-lg"></i>
+                    ${iconHtml}
                     <span class="flex-1 leading-snug">${optText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>
                 `;
                 container.appendChild(btn);
             });
 
-            // Cập nhật trạng thái
             const currentNum = currentIndex + 1;
             const total = questions.length;
             const percent = ((currentNum / total) * 100).toFixed(0);
@@ -1423,23 +1439,27 @@ D. Xét nghiệm máu mẹ
             document.getElementById('question-counter').innerText = `Câu ${currentNum}/${total}`;
             document.getElementById('top-progress-bar').style.width = `${percent}%`;
 
-            // Nút điều hướng
+            // Cập nhật nút Next
             document.getElementById('btn-prev').disabled = currentIndex === 0;
             const btnNext = document.getElementById('btn-next');
+            
             if (currentIndex === total - 1) {
                 btnNext.innerHTML = 'Nộp bài <i class="fas fa-check ml-1"></i>';
                 btnNext.className = 'flex-[1.5] py-3.5 sm:py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition shadow-md';
             } else {
                 btnNext.innerHTML = 'Tiếp theo <i class="fas fa-chevron-right ml-1"></i>';
-                btnNext.className = 'flex-[1.5] py-3.5 sm:py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition shadow-md';
+                // Đổi màu nút Next nếu đã trả lời xong để nhắc user bấm qua câu tiếp
+                if (hasAnswered) {
+                    btnNext.className = 'flex-[1.5] py-3.5 sm:py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-md ring-2 ring-blue-300 ring-offset-1';
+                } else {
+                    btnNext.className = 'flex-[1.5] py-3.5 sm:py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition shadow-md';
+                }
             }
         }
 
         function selectOption(optIndex) {
-            userAnswers[currentIndex] = optIndex;
-            renderQuestion();
-            // Tự động chuyển câu tiếp nếu trên mobile (Tùy chọn UX, tắt tạm thời để người dùng đọc lại)
-            // setTimeout(() => changeQuestion(1), 300); 
+            userAnswers[currentIndex] = optIndex; // Lưu đáp án
+            renderQuestion(); // Render lại lập tức để báo đúng/sai
         }
 
         function changeQuestion(step) {
@@ -1459,18 +1479,15 @@ D. Xét nghiệm máu mẹ
         function confirmSubmit() {
             const unanswered = userAnswers.filter(a => a === null).length;
             const warningText = document.getElementById('unanswered-warning');
-            
             if (unanswered > 0) {
-                warningText.innerText = `Bạn còn ${unanswered} câu chưa trả lời. Chắc chắn nộp bài?`;
+                warningText.innerText = `Bạn còn ${unanswered} câu chưa làm. Bạn vẫn muốn nộp bài?`;
                 warningText.classList.add('text-red-500');
             } else {
-                warningText.innerText = "Tuyệt vời, bạn đã trả lời tất cả các câu hỏi. Nộp bài ngay?";
+                warningText.innerText = "Bạn đã duyệt qua tất cả câu hỏi. Xem tổng kết ngay?";
                 warningText.classList.remove('text-red-500');
             }
-
-            const modal = document.getElementById('submit-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            document.getElementById('submit-modal').classList.remove('hidden');
+            document.getElementById('submit-modal').classList.add('flex');
         }
 
         function closeModal() {
@@ -1487,7 +1504,6 @@ D. Xét nghiệm máu mẹ
                 if (userAnswers[idx] === q.correctIndex) correctCount++;
             });
 
-            // UI Changes
             document.getElementById('quiz-screen').classList.add('hidden');
             document.getElementById('quiz-header-info').classList.add('hidden');
             document.getElementById('mobile-nav').classList.add('hidden');
@@ -1500,59 +1516,7 @@ D. Xét nghiệm máu mẹ
             document.getElementById('res-correct').innerText = correctCount;
             document.getElementById('res-wrong').innerText = questions.length - correctCount;
 
-            renderReview();
             window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function renderReview() {
-            const container = document.getElementById('review-container');
-            container.innerHTML = '';
-
-            questions.forEach((q, qIndex) => {
-                const isUserCorrect = userAnswers[qIndex] === q.correctIndex;
-                const isSkipped = userAnswers[qIndex] === null;
-
-                const qDiv = document.createElement('div');
-                qDiv.className = "p-4 sm:p-5 bg-gray-50/50 rounded-xl border border-gray-200 mb-4";
-
-                let badge = isUserCorrect 
-                    ? '<span class="inline-block px-2 py-0.5 bg-green-100 text-green-700 text-[11px] font-bold rounded uppercase ml-2 align-middle">Đúng</span>'
-                    : (isSkipped ? '<span class="inline-block px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[11px] font-bold rounded uppercase ml-2 align-middle">Bỏ qua</span>' 
-                                 : '<span class="inline-block px-2 py-0.5 bg-red-100 text-red-700 text-[11px] font-bold rounded uppercase ml-2 align-middle">Sai</span>');
-
-                qDiv.innerHTML = `<h4 class="font-semibold text-gray-900 mb-4 text-[15px] sm:text-base whitespace-pre-wrap">${q.text}${badge}</h4>`;
-
-                const optsDiv = document.createElement('div');
-                optsDiv.className = "flex flex-col gap-2";
-
-                q.options.forEach((optText, optIndex) => {
-                    const optBtn = document.createElement('div');
-                    let classes = "p-3 rounded-lg text-sm border font-medium flex gap-2 items-start ";
-                    let icon = '<i class="far fa-circle mt-0.5 text-gray-400"></i>';
-
-                    // Đánh dấu đáp án đúng
-                    if (optIndex === q.correctIndex) {
-                        classes += "bg-green-50 border-green-200 text-green-800";
-                        icon = '<i class="fas fa-check-circle mt-0.5 text-green-600"></i>';
-                    } 
-                    // Đánh dấu đáp án sai user đã chọn
-                    else if (optIndex === userAnswers[qIndex] && !isUserCorrect) {
-                        classes += "bg-red-50 border-red-200 text-red-800 line-through opacity-80";
-                        icon = '<i class="fas fa-times-circle mt-0.5 text-red-600"></i>';
-                    } 
-                    // Các đáp án khác
-                    else {
-                        classes += "bg-white border-gray-200 text-gray-500 opacity-60";
-                    }
-
-                    optBtn.className = classes;
-                    optBtn.innerHTML = `${icon} <span class="flex-1 leading-snug">${optText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>`;
-                    optsDiv.appendChild(optBtn);
-                });
-
-                qDiv.appendChild(optsDiv);
-                container.appendChild(qDiv);
-            });
         }
     </script>
 </body>
